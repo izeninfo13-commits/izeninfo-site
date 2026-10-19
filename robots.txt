@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /contact.php
+Disallow: /espace-client/
+Disallow: /stats/
 
 Sitemap: https://izeninfo.fr/sitemap.xml
