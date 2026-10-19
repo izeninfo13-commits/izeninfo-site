@@ -230,7 +230,13 @@
     const box = $("clients");
     try {
       const d = await api("clients");
-      box.innerHTML = d.users.map(u => {
+      const lastHit = s => s.last_hit ? "dernière visite " + new Date(s.last_hit * 1000).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "aucune visite reçue";
+      const free = d.sites.filter(s => !s.user_id);
+      const freeHtml = free.length ? `<article class="client"><header><h3>Sites référencés sans accès client</h3><span class="meta">${free.length} site${free.length > 1 ? "s" : ""} · statistiques visibles par vous uniquement</span></header>
+        <ul class="sites">${free.map(s => `<li><strong>${esc(s.name)}</strong> <span class="muted">· ${esc(s.domain)}</span> <span class="meta">· ${lastHit(s)}</span><span class="code">${esc(s.snippet)}</span>
+          <form class="assign form-grid" data-site="${s.id}" style="margin-top:10px"><div class="field"><label>Nom du client</label><input name="name" value="${esc(s.name)}"></div><div class="field"><label>E-mail du client</label><input name="email" type="email" required placeholder="contact@${esc(s.domain)}"></div>
+          <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm primary" type="submit">Donner l'accès au client</button><button class="btn sm" type="button" data-copy="${esc(s.snippet)}">Copier le code</button></div><div class="out" style="grid-column:1/-1"></div></form></li>`).join("")}</ul></article>` : "";
+      box.innerHTML = freeHtml + d.users.map(u => {
         const sites = d.sites.filter(s => s.user_id === u.id);
         const last = u.last_login ? new Date(u.last_login * 1000).toLocaleDateString("fr-FR") : "jamais";
         return `<article class="client" data-uid="${u.id}">
@@ -243,7 +249,8 @@
   }
 
   $("clients").addEventListener("click", async e => {
-    const b = e.target.closest("button"); if (!b) return;
+    const b = e.target.closest("button"); if (!b || b.type === "submit") return;
+    if (b.dataset.done) { loadAdmin(); return; }
     const card = b.closest(".client"), out = card && card.querySelector(".out");
     if (b.dataset.copy) { try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copié"; setTimeout(() => b.textContent = "Copier le code", 1500); } catch (err) {} return; }
     if (b.dataset.reset) {
@@ -252,10 +259,23 @@
       return;
     }
     if (b.dataset.del) {
-      if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirmer la suppression (données comprises)"; return; }
+      if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirmer (les statistiques sont conservées)"; return; }
       try { await api("delete_client", { user_id: +b.dataset.del }); loadAdmin(); state.sites = (await api("state")).sites; }
       catch (err) { out.innerHTML = `<p class="err">${esc(err.message)}</p>`; }
     }
+  });
+
+  $("clients").addEventListener("submit", async e => {
+    const f = e.target.closest("form.assign"); if (!f) return;
+    e.preventDefault();
+    const out = f.querySelector(".out"); out.innerHTML = "";
+    try {
+      const r = await api("assign_client", { site_id: +f.dataset.site, name: f.elements.name.value, email: f.elements.email.value });
+      out.innerHTML = r.password
+        ? `<div class="secret"><p><strong>Accès créé.</strong> À transmettre au client :</p><p>Adresse : <strong>https://izeninfo.fr/espace-client/</strong><br>Identifiant : <strong>${esc(r.email)}</strong></p><p>Mot de passe (affiché une seule fois) :</p><span class="code">${esc(r.password)}</span><button class="btn sm" type="button" style="margin-top:10px" data-done="1">J'ai transmis le mot de passe</button></div>`
+        : `<div class="secret"><p>Site ajouté au compte existant <strong>${esc(r.email)}</strong>.</p><button class="btn sm" type="button" data-done="1">OK</button></div>`;
+      f.querySelectorAll("input,button[type=submit]").forEach(x => x.disabled = true);
+    } catch (err) { out.innerHTML = `<p class="err">${esc(err.message)}</p>`; }
   });
 
   $("fClient").addEventListener("submit", async e => {

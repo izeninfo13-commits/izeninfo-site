@@ -29,7 +29,7 @@ if ($a === 'setup' && $method === 'POST') {
     $db->prepare('INSERT INTO users(email,name,pass,role,created) VALUES(?,?,?,?,?)')->execute([$email, $name, password_hash($pass, PASSWORD_DEFAULT), 'admin', time()]);
     /* Le site IZENINFO lui-même est créé d'office. */
     $uid = (int)$db->lastInsertId();
-    $db->prepare('INSERT INTO sites(user_id,name,domain,skey,created) VALUES(?,?,?,?,?)')->execute([$uid, 'IZENINFO', 'izeninfo.fr', 'izeninfo', time()]);
+    $db->prepare("UPDATE sites SET user_id=? WHERE skey='izeninfo'")->execute([$uid]);
     session_regenerate_id(true);
     $_SESSION['uid'] = $uid;
     izs_json(['ok' => true]);
@@ -222,18 +222,39 @@ if ($a === 'reset_password') {
 if ($a === 'delete_client') {
     $uid = (int)($in['user_id'] ?? 0);
     $db->beginTransaction();
-    $ids = $db->prepare("SELECT s.id FROM sites s JOIN users u ON u.id=s.user_id WHERE u.id=? AND u.role='client'");
-    $ids->execute([$uid]);
-    foreach ($ids->fetchAll(PDO::FETCH_COLUMN) as $sid) {
-        $db->prepare('DELETE FROM hits WHERE site_id=?')->execute([$sid]);
-        $db->prepare('DELETE FROM live WHERE site_id=?')->execute([$sid]);
-        $db->prepare('DELETE FROM sites WHERE id=?')->execute([$sid]);
-    }
+    $db->prepare("UPDATE sites SET user_id=NULL WHERE user_id=(SELECT id FROM users WHERE id=? AND role='client')")->execute([$uid]);
     $st = $db->prepare("DELETE FROM users WHERE id=? AND role='client'");
     $st->execute([$uid]);
     $db->commit();
     if (!$st->rowCount()) izs_json(['error' => 'Client introuvable.'], 404);
     izs_json(['ok' => true]);
+}
+
+/* Donner l'accès d'un site référencé à un client (nouveau ou existant). */
+if ($a === 'assign_client') {
+    $sid = (int)($in['site_id'] ?? 0);
+    $email = strtolower(trim((string)($in['email'] ?? '')));
+    $name = trim((string)($in['name'] ?? ''));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) izs_json(['error' => 'E-mail invalide.'], 422);
+    $st = $db->prepare('SELECT s.id, s.skey, s.user_id, u.role FROM sites s LEFT JOIN users u ON u.id=s.user_id WHERE s.id=?');
+    $st->execute([$sid]);
+    $site = $st->fetch();
+    if (!$site) izs_json(['error' => 'Site introuvable.'], 404);
+    if ($site['user_id'] && $site['role'] === 'client') izs_json(['error' => 'Ce site est déjà attribué à un client.'], 409);
+    $st = $db->prepare('SELECT id, role FROM users WHERE email=?'); $st->execute([$email]);
+    $existing = $st->fetch();
+    $pass = null;
+    if ($existing) {
+        if ($existing['role'] !== 'client') izs_json(['error' => 'Cet e-mail est celui du compte administrateur.'], 422);
+        $uid = (int)$existing['id'];
+    } else {
+        if ($name === '') izs_json(['error' => 'Nom du client requis.'], 422);
+        $pass = izs_gen_password();
+        $db->prepare('INSERT INTO users(email,name,pass,role,created) VALUES(?,?,?,?,?)')->execute([$email, $name, password_hash($pass, PASSWORD_DEFAULT), 'client', time()]);
+        $uid = (int)$db->lastInsertId();
+    }
+    $db->prepare('UPDATE sites SET user_id=? WHERE id=?')->execute([$uid, $sid]);
+    izs_json(['ok' => true, 'email' => $email, 'password' => $pass, 'snippet' => $snippet($site['skey'])]);
 }
 
 izs_json(['error' => 'Action inconnue.'], 400);

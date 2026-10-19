@@ -4,6 +4,14 @@
 if (!defined('IZS')) { http_response_code(404); exit; }
 
 date_default_timezone_set('Europe/Paris');
+const IZS_SITES = [
+    'izeninfo'    => ['IZENINFO', 'izeninfo.fr'],
+    'izenride'    => ['IzenRide', 'izenride.fr'],
+    'izencustom'  => ['IzenCustom', 'izencustom.fr'],
+    'mycathome'   => ['MyCatHome', 'mycathome.fr'],
+    'gameofdrone' => ['Game of Drone', 'game-of-drone.fr'],
+    'lentracte'   => ["L'Entracte", 'lentracte-auriol.fr'],
+];
 if (!function_exists('str_ends_with')) { function str_ends_with(string $h, string $n): bool { return $n === '' || substr($h, -strlen($n)) === $n; } }
 
 /* Dossier des données : hors du dossier public si possible (non écrasé par les déploiements Git). */
@@ -42,6 +50,9 @@ function izs_db(): PDO {
     $db->exec('CREATE INDEX IF NOT EXISTS hits_site_ts ON hits(site_id, ts)');
     $db->exec('CREATE TABLE IF NOT EXISTS live(
         site_id INTEGER NOT NULL, vid TEXT NOT NULL, path TEXT, ts INTEGER NOT NULL, PRIMARY KEY(site_id, vid))');
+    /* Sites réalisés par IZENINFO : référencés d'office, avec une clé de mesure fixe. */
+    $ins = $db->prepare('INSERT OR IGNORE INTO sites(user_id,name,domain,skey,created) VALUES(NULL,?,?,?,?)');
+    foreach (IZS_SITES as $k => [$name, $domain]) $ins->execute([$name, $domain, $k, time()]);
     return $db;
 }
 
