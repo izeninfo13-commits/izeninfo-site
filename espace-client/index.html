@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Espace client · IZENINFO</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+
+<!-- Connexion / première configuration -->
+<main class="auth" id="vAuth" hidden>
+  <div class="auth-card">
+    <a class="logo" href="/"><i></i>IZEN<span>INFO</span></a>
+    <div>
+      <h1 id="authTitle">Espace client</h1>
+      <p class="muted" id="authLead" style="margin:8px 0 0">Consultez les statistiques de votre site en temps réel.</p>
+    </div>
+    <form id="fLogin" novalidate>
+      <div class="field" id="fName" hidden><label for="iName">Nom affiché</label><input id="iName" autocomplete="organization" value="IZENINFO"></div>
+      <div class="field"><label for="iEmail">E-mail</label><input id="iEmail" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="iPass">Mot de passe</label><input id="iPass" type="password" autocomplete="current-password" required minlength="10"></div>
+      <p class="err" id="authErr" role="alert"></p>
+      <button class="btn primary" type="submit" id="authBtn">Se connecter</button>
+    </form>
+    <p class="note" id="authNote">Identifiants oubliés ? Écrivez à <a href="mailto:direction@izenride.com">direction@izenride.com</a>.</p>
+  </div>
+</main>
+
+<!-- Tableau de bord -->
+<div id="vApp" hidden>
+  <header class="top">
+    <div class="wrap">
+      <a class="logo" href="/"><i></i>IZEN<span>INFO</span></a>
+      <span class="tag">Espace client</span>
+      <span class="grow"></span>
+      <div class="tabs" id="navTabs" hidden>
+        <button type="button" data-view="stats" aria-pressed="true">Statistiques</button>
+        <button type="button" data-view="admin" aria-pressed="false">Clients</button>
+      </div>
+      <button class="btn sm" type="button" id="bPass">Mot de passe</button>
+      <button class="btn sm" type="button" id="bLogout">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="vStats">
+    <div class="filters">
+      <h1 id="siteTitle">Statistiques<small id="siteDomain"></small></h1>
+      <select class="site" id="siteSel" aria-label="Choisir un site" hidden></select>
+      <div class="tabs" id="ranges" role="group" aria-label="Période">
+        <button type="button" data-range="today" aria-pressed="false">Aujourd'hui</button>
+        <button type="button" data-range="7d" aria-pressed="false">7 jours</button>
+        <button type="button" data-range="30d" aria-pressed="true">30 jours</button>
+        <button type="button" data-range="12m" aria-pressed="false">12 mois</button>
+      </div>
+    </div>
+
+    <div class="notice" id="install" hidden>
+      <strong>En attente des premières visites.</strong>
+      <p class="muted" style="margin:6px 0 0">Les statistiques apparaissent dès que le code de mesure est présent sur le site et qu'un visiteur l'ouvre.</p>
+      <code id="installCode"></code>
+    </div>
+
+    <section class="grid kpis" aria-label="Chiffres clés">
+      <div class="card kpi live">
+        <div class="label"><span class="dot" aria-hidden="true"></span>En ce moment</div>
+        <div class="value" id="liveN">0</div>
+        <div class="delta" id="liveLbl">visiteur sur le site</div>
+        <ul id="livePages"></ul>
+      </div>
+      <div class="card kpi"><div class="label">Visiteurs</div><div class="value" id="kV">–</div><div class="delta" id="dV"></div></div>
+      <div class="card kpi"><div class="label">Pages vues</div><div class="value" id="kP">–</div><div class="delta" id="dP"></div></div>
+      <div class="card kpi"><div class="label">Pages par visite</div><div class="value" id="kR">–</div><div class="delta" id="dR"></div></div>
+      <div class="card kpi"><div class="label">Contacts</div><div class="value" id="kC">–</div><div class="delta" id="dC"></div></div>
+    </section>
+
+    <section class="card mt" aria-labelledby="hTraffic">
+      <div class="card-head">
+        <div><h2 id="hTraffic">Fréquentation</h2><p class="sub" id="trafficSub"></p></div>
+        <div class="legend" aria-hidden="true"><span><i style="background:var(--series-1)"></i>Visiteurs</span><span><i style="background:var(--series-2)"></i>Pages vues</span></div>
+      </div>
+      <div class="chart" id="chart"></div>
+      <button type="button" class="linkish" id="bTable" aria-expanded="false" aria-controls="tableWrap">Afficher le tableau</button>
+      <div class="table-scroll" id="tableWrap" hidden></div>
+    </section>
+
+    <section class="grid two mt">
+      <div class="card"><h2>Provenance</h2><p class="sub">D'où arrivent vos visiteurs (visites)</p><ul class="bars" id="lSources"></ul></div>
+      <div class="card"><h2>Pages les plus vues</h2><p class="sub">Pages vues sur la période</p><ul class="bars" id="lPages"></ul></div>
+    </section>
+
+    <section class="grid three mt">
+      <div class="card"><h2>Appareils</h2><p class="sub">Part des visites</p><ul class="bars" id="lDevices"></ul></div>
+      <div class="card"><h2>Pays</h2><p class="sub">D'après le fuseau horaire du visiteur</p><ul class="bars" id="lCountries"></ul></div>
+      <div class="card"><h2>Navigateurs</h2><p class="sub">Part des visites</p><ul class="bars" id="lBrowsers"></ul></div>
+    </section>
+
+    <section class="card mt" aria-labelledby="hActions">
+      <h2 id="hActions">Demandes de contact</h2>
+      <p class="sub">Clics sur votre numéro, votre e-mail et formulaires envoyés</p>
+      <div class="actions">
+        <div><span>Appels téléphone</span><b id="eTel">0</b></div>
+        <div><span>E-mails</span><b id="eMail">0</b></div>
+        <div><span>Formulaires</span><b id="eForm">0</b></div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>Mesure d'audience sans cookie, hébergée en France. Aucune adresse IP n'est conservée.</span>
+      <span id="updated"></span>
+    </footer>
+  </main>
+
+  <!-- Administration -->
+  <main class="wrap" id="vAdmin" hidden>
+    <div class="filters"><h1>Clients<small>Créez un accès et récupérez le code de mesure à placer sur le site.</small></h1></div>
+    <section class="card">
+      <h2>Nouveau client</h2>
+      <p class="sub">Un mot de passe est généré : transmettez-le au client, il pourra le changer.</p>
+      <form id="fClient" class="form-grid" novalidate>
+        <div class="field"><label for="cName">Nom du client</label><input id="cName" required placeholder="L'Entracte"></div>
+        <div class="field"><label for="cEmail">E-mail de connexion</label><input id="cEmail" type="email" required placeholder="contact@exemple.fr"></div>
+        <div class="field"><label for="cSite">Nom du site</label><input id="cSite" placeholder="L'Entracte"></div>
+        <div class="field"><label for="cDomain">Domaine</label><input id="cDomain" required placeholder="lentracte-auriol.fr"></div>
+        <p class="err" id="cErr" role="alert" style="grid-column:1/-1"></p>
+        <div style="grid-column:1/-1"><button class="btn primary" type="submit">Créer l'accès</button></div>
+      </form>
+      <div id="cResult" hidden></div>
+    </section>
+    <div class="admin-list mt" id="clients"></div>
+    <footer class="foot"><span>Les codes de mesure se placent juste avant &lt;/head&gt; sur chaque page du site.</span></footer>
+  </main>
+</div>
+
+<dialog id="dPass">
+  <form id="fPass" novalidate>
+    <h2 style="font-size:20px">Changer de mot de passe</h2>
+    <div class="field"><label for="pOld">Mot de passe actuel</label><input id="pOld" type="password" autocomplete="current-password" required></div>
+    <div class="field"><label for="pNew">Nouveau mot de passe (10 caractères minimum)</label><input id="pNew" type="password" autocomplete="new-password" required minlength="10"></div>
+    <p class="err" id="pErr" role="alert"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" type="button" id="pCancel">Annuler</button><button class="btn primary" type="submit">Enregistrer</button></div>
+  </form>
+</dialog>
+
+<script src="app.js?v=1" defer></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<?php
+/* IZENINFO – Espace client : API JSON (connexion, statistiques, gestion des comptes). */
+define('IZS', 1);
+require __DIR__ . '/_lib.php';
+izs_session();
+
+$a = $_GET['a'] ?? '';
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$in = [];
+if ($method === 'POST') {
+    $in = json_decode((string)file_get_contents('php://input'), true) ?: [];
+    if (!izs_csrf_ok($in['csrf'] ?? null)) izs_json(['error' => 'Session expirée, rechargez la page.'], 403);
+}
+$db = izs_db();
+
+/* ---------- Accès public : état, connexion, première configuration ---------- */
+if ($a === 'state') {
+    $u = izs_user();
+    izs_json(['csrf' => $_SESSION['csrf'], 'setup' => !izs_has_users(), 'user' => $u, 'sites' => $u ? izs_sites_for($u) : []]);
+}
+
+if ($a === 'setup' && $method === 'POST') {
+    if (izs_has_users()) izs_json(['error' => 'Le compte administrateur existe déjà.'], 403);
+    $email = strtolower(trim((string)($in['email'] ?? '')));
+    $name = trim((string)($in['name'] ?? 'IZENINFO'));
+    $pass = (string)($in['password'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) izs_json(['error' => 'Adresse e-mail invalide.'], 422);
+    if (!izs_password_ok($pass)) izs_json(['error' => 'Le mot de passe doit contenir au moins 10 caractères.'], 422);
+    $db->prepare('INSERT INTO users(email,name,pass,role,created) VALUES(?,?,?,?,?)')->execute([$email, $name, password_hash($pass, PASSWORD_DEFAULT), 'admin', time()]);
+    /* Le site IZENINFO lui-même est créé d'office. */
+    $uid = (int)$db->lastInsertId();
+    $db->prepare('INSERT INTO sites(user_id,name,domain,skey,created) VALUES(?,?,?,?,?)')->execute([$uid, 'IZENINFO', 'izeninfo.fr', 'izeninfo', time()]);
+    session_regenerate_id(true);
+    $_SESSION['uid'] = $uid;
+    izs_json(['ok' => true]);
+}
+
+if ($a === 'login' && $method === 'POST') {
+    if (!izs_rate('login', 8, 900)) izs_json(['error' => 'Trop de tentatives. Réessayez dans 15 minutes.'], 429);
+    $st = $db->prepare('SELECT id,pass FROM users WHERE email=?');
+    $st->execute([strtolower(trim((string)($in['email'] ?? '')))]);
+    $u = $st->fetch();
+    if (!$u || !password_verify((string)($in['password'] ?? ''), $u['pass'])) {
+        usleep(400000);
+        izs_json(['error' => 'Identifiant ou mot de passe incorrect.'], 401);
+    }
+    session_regenerate_id(true);
+    $_SESSION['uid'] = (int)$u['id'];
+    $db->prepare('UPDATE users SET last_login=? WHERE id=?')->execute([time(), $u['id']]);
+    izs_json(['ok' => true]);
+}
+
+if ($a === 'logout' && $method === 'POST') {
+    $_SESSION = [];
+    session_regenerate_id(true);
+    izs_json(['ok' => true]);
+}
+
+/* ---------- À partir d'ici : connexion requise ---------- */
+$u = izs_user();
+if (!$u) izs_json(['error' => 'Connexion requise.'], 401);
+$isAdmin = $u['role'] === 'admin';
+
+function izs_site_or_403(array $u, $id): array {
+    $st = izs_db()->prepare('SELECT * FROM sites WHERE id=?');
+    $st->execute([(int)$id]);
+    $s = $st->fetch();
+    if (!$s || ($u['role'] !== 'admin' && (int)$s['user_id'] !== (int)$u['id'])) izs_json(['error' => 'Site introuvable.'], 404);
+    return $s;
+}
+
+if ($a === 'password' && $method === 'POST') {
+    $st = $db->prepare('SELECT pass FROM users WHERE id=?');
+    $st->execute([$u['id']]);
+    if (!password_verify((string)($in['old'] ?? ''), (string)$st->fetchColumn())) izs_json(['error' => 'Mot de passe actuel incorrect.'], 422);
+    if (!izs_password_ok((string)($in['new'] ?? ''))) izs_json(['error' => 'Le nouveau mot de passe doit contenir au moins 10 caractères.'], 422);
+    $db->prepare('UPDATE users SET pass=? WHERE id=?')->execute([password_hash((string)$in['new'], PASSWORD_DEFAULT), $u['id']]);
+    izs_json(['ok' => true]);
+}
+
+/* ---------- Statistiques ---------- */
+if ($a === 'live') {
+    $s = izs_site_or_403($u, $_GET['site'] ?? 0);
+    $st = $db->prepare('SELECT path, COUNT(*) n FROM live WHERE site_id=? AND ts>=? GROUP BY path ORDER BY n DESC LIMIT 8');
+    $st->execute([$s['id'], time() - 300]);
+    $pages = $st->fetchAll();
+    izs_json(['count' => array_sum(array_map(fn($r) => (int)$r['n'], $pages)), 'pages' => $pages, 'at' => time()]);
+}
+
+if ($a === 'stats') {
+    $s = izs_site_or_403($u, $_GET['site'] ?? 0);
+    $sid = (int)$s['id'];
+    $range = in_array($_GET['range'] ?? '', ['today', '7d', '30d', '90d', '12m'], true) ? $_GET['range'] : '30d';
+    $now = time();
+    $todayStart = strtotime('today');
+    switch ($range) {
+        case 'today': $from = $todayStart; $len = $now - $from; $bucket = 'hour'; break;
+        case '7d': $from = strtotime('-6 days', $todayStart); $bucket = 'day'; break;
+        case '90d': $from = strtotime('-89 days', $todayStart); $bucket = 'day'; break;
+        case '12m': $from = strtotime(date('Y-m-01', strtotime('-11 months', $todayStart))); $bucket = 'month'; break;
+        default: $from = strtotime('-29 days', $todayStart); $bucket = 'day';
+    }
+    $len = $now - $from;
+    $pFrom = $from - $len; $pTo = $from;
+
+    $kpi = function (int $a, int $b) use ($db, $sid): array {
+        $st = $db->prepare("SELECT
+            (SELECT COALESCE(SUM(n),0) FROM (SELECT COUNT(DISTINCT vid) n FROM hits WHERE site_id=:s AND ts>=:a AND ts<:b AND kind='pv' GROUP BY day)) AS visitors,
+            (SELECT COUNT(*) FROM hits WHERE site_id=:s AND ts>=:a AND ts<:b AND kind='pv') AS pageviews,
+            (SELECT COUNT(*) FROM hits WHERE site_id=:s AND ts>=:a AND ts<:b AND kind='ev') AS contacts");
+        $st->execute([':s' => $sid, ':a' => $a, ':b' => $b]);
+        $r = array_map('intval', $st->fetch());
+        $r['ppv'] = $r['visitors'] ? round($r['pageviews'] / $r['visitors'], 1) : 0;
+        return $r;
+    };
+    $cur = $kpi($from, $now + 1);
+    $prev = $kpi($pFrom, $pTo);
+
+    /* Série temporelle (cases vides comprises) */
+    $series = [];
+    if ($bucket === 'hour') {
+        $st = $db->prepare("SELECT CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) h, COUNT(DISTINCT vid) v, COUNT(*) p FROM hits WHERE site_id=? AND ts>=? AND kind='pv' GROUP BY h");
+        $st->execute([$sid, $from]);
+        $rows = []; foreach ($st->fetchAll() as $r) $rows[(int)$r['h']] = $r;
+        $hNow = (int)date('G');
+        for ($h = 0; $h <= $hNow; $h++) $series[] = ['label' => sprintf('%02d h', $h), 'key' => (string)$h, 'visitors' => (int)($rows[$h]['v'] ?? 0), 'pageviews' => (int)($rows[$h]['p'] ?? 0)];
+    } else {
+        $st = $db->prepare("SELECT day, COUNT(DISTINCT vid) v, COUNT(*) p FROM hits WHERE site_id=? AND ts>=? AND kind='pv' GROUP BY day");
+        $st->execute([$sid, $from]);
+        $rows = []; foreach ($st->fetchAll() as $r) $rows[$r['day']] = $r;
+        if ($bucket === 'day') {
+            for ($t = $from; $t <= $now; $t = strtotime('+1 day', $t)) {
+                $k = date('Y-m-d', $t);
+                $series[] = ['label' => $k, 'key' => $k, 'visitors' => (int)($rows[$k]['v'] ?? 0), 'pageviews' => (int)($rows[$k]['p'] ?? 0)];
+            }
+        } else {
+            $m = [];
+            foreach ($rows as $k => $r) { $mk = substr($k, 0, 7); $m[$mk]['v'] = ($m[$mk]['v'] ?? 0) + $r['v']; $m[$mk]['p'] = ($m[$mk]['p'] ?? 0) + $r['p']; }
+            for ($t = $from; $t <= $now; $t = strtotime('+1 month', $t)) {
+                $k = date('Y-m', $t);
+                $series[] = ['label' => $k, 'key' => $k, 'visitors' => (int)($m[$k]['v'] ?? 0), 'pageviews' => (int)($m[$k]['p'] ?? 0)];
+            }
+        }
+    }
+
+    $top = function (string $col, string $where, int $limit = 8, string $count = 'COUNT(*)') use ($db, $sid, $from): array {
+        $st = $db->prepare("SELECT $col AS name, $count AS n FROM hits WHERE site_id=? AND ts>=? AND $where GROUP BY $col ORDER BY n DESC LIMIT $limit");
+        $st->execute([$sid, $from]);
+        return array_map(fn($r) => ['name' => $r['name'], 'n' => (int)$r['n']], $st->fetchAll());
+    };
+    $events = ['tel' => 0, 'mail' => 0, 'form' => 0];
+    foreach ($top('ev', "kind='ev'", 5) as $r) if (isset($events[$r['name']])) $events[$r['name']] = $r['n'];
+
+    izs_json([
+        'site' => ['id' => $sid, 'name' => $s['name'], 'domain' => $s['domain']],
+        'range' => $range, 'bucket' => $bucket, 'kpi' => $cur, 'prev' => $prev, 'series' => $series,
+        'sources' => $top('source', "kind='pv' AND source IS NOT NULL", 8, 'COUNT(DISTINCT day||vid)'),
+        'pages' => $top('path', "kind='pv'", 10),
+        'devices' => $top('device', "kind='pv'", 4, 'COUNT(DISTINCT day||vid)'),
+        'browsers' => $top('browser', "kind='pv'", 6, 'COUNT(DISTINCT day||vid)'),
+        'countries' => $top('country', "kind='pv'", 8, 'COUNT(DISTINCT day||vid)'),
+        'events' => $events,
+    ]);
+}
+
+/* ---------- Administration (IZENINFO uniquement) ---------- */
+if (!$isAdmin) izs_json(['error' => 'Accès réservé.'], 403);
+
+$snippet = fn(string $key) => '<script defer src="https://izeninfo.fr/stats/t.js" data-site="' . $key . '"></script>';
+$newKey = fn() => bin2hex(random_bytes(8));
+
+if ($a === 'clients') {
+    $users = $db->query("SELECT id,email,name,role,created,last_login FROM users ORDER BY role='admin' DESC, name")->fetchAll();
+    $sites = $db->query('SELECT s.id,s.user_id,s.name,s.domain,s.skey,(SELECT MAX(ts) FROM hits h WHERE h.site_id=s.id) last_hit FROM sites s ORDER BY s.name')->fetchAll();
+    foreach ($sites as &$x) $x['snippet'] = $snippet($x['skey']);
+    izs_json(['users' => $users, 'sites' => $sites]);
+}
+
+if ($method !== 'POST') izs_json(['error' => 'Action inconnue.'], 400);
+
+if ($a === 'create_client') {
+    $email = strtolower(trim((string)($in['email'] ?? '')));
+    $name = trim((string)($in['name'] ?? ''));
+    $domain = izs_norm_domain((string)($in['domain'] ?? ''));
+    $siteName = trim((string)($in['site_name'] ?? '')) ?: $name;
+    if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) izs_json(['error' => 'Nom et e-mail valides requis.'], 422);
+    if ($domain === '') izs_json(['error' => 'Nom de domaine invalide (ex. lentracte-auriol.fr).'], 422);
+    $st = $db->prepare('SELECT COUNT(*) FROM users WHERE email=?'); $st->execute([$email]);
+    if ($st->fetchColumn()) izs_json(['error' => 'Un compte existe déjà avec cet e-mail.'], 409);
+    $pass = izs_gen_password();
+    $db->beginTransaction();
+    $db->prepare('INSERT INTO users(email,name,pass,role,created) VALUES(?,?,?,?,?)')->execute([$email, $name, password_hash($pass, PASSWORD_DEFAULT), 'client', time()]);
+    $uid = (int)$db->lastInsertId();
+    $key = $newKey();
+    $db->prepare('INSERT INTO sites(user_id,name,domain,skey,created) VALUES(?,?,?,?,?)')->execute([$uid, $siteName, $domain, $key, time()]);
+    $db->commit();
+    izs_json(['ok' => true, 'email' => $email, 'password' => $pass, 'snippet' => $snippet($key)]);
+}
+
+if ($a === 'add_site') {
+    $domain = izs_norm_domain((string)($in['domain'] ?? ''));
+    $name = trim((string)($in['name'] ?? ''));
+    $uid = (int)($in['user_id'] ?? 0);
+    if ($domain === '' || $name === '') izs_json(['error' => 'Nom et domaine requis.'], 422);
+    $st = $db->prepare('SELECT COUNT(*) FROM users WHERE id=?'); $st->execute([$uid]);
+    if (!$st->fetchColumn()) izs_json(['error' => 'Client introuvable.'], 404);
+    $key = $newKey();
+    $db->prepare('INSERT INTO sites(user_id,name,domain,skey,created) VALUES(?,?,?,?,?)')->execute([$uid, $name, $domain, $key, time()]);
+    izs_json(['ok' => true, 'snippet' => $snippet($key)]);
+}
+
+if ($a === 'reset_password') {
+    $uid = (int)($in['user_id'] ?? 0);
+    if ($uid === (int)$u['id']) izs_json(['error' => 'Utilisez « Mon mot de passe » pour votre propre compte.'], 422);
+    $pass = izs_gen_password();
+    $st = $db->prepare("UPDATE users SET pass=? WHERE id=? AND role='client'");
+    $st->execute([password_hash($pass, PASSWORD_DEFAULT), $uid]);
+    if (!$st->rowCount()) izs_json(['error' => 'Client introuvable.'], 404);
+    izs_json(['ok' => true, 'password' => $pass]);
+}
+
+if ($a === 'delete_client') {
+    $uid = (int)($in['user_id'] ?? 0);
+    $db->beginTransaction();
+    $ids = $db->prepare("SELECT s.id FROM sites s JOIN users u ON u.id=s.user_id WHERE u.id=? AND u.role='client'");
+    $ids->execute([$uid]);
+    foreach ($ids->fetchAll(PDO::FETCH_COLUMN) as $sid) {
+        $db->prepare('DELETE FROM hits WHERE site_id=?')->execute([$sid]);
+        $db->prepare('DELETE FROM live WHERE site_id=?')->execute([$sid]);
+        $db->prepare('DELETE FROM sites WHERE id=?')->execute([$sid]);
+    }
+    $st = $db->prepare("DELETE FROM users WHERE id=? AND role='client'");
+    $st->execute([$uid]);
+    $db->commit();
+    if (!$st->rowCount()) izs_json(['error' => 'Client introuvable.'], 404);
+    izs_json(['ok' => true]);
+}
+
+izs_json(['error' => 'Action inconnue.'], 400);
