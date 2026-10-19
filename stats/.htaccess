@@ -1,0 +1,8 @@
+# Mesure d'audience IZENINFO
+Options -Indexes
+<IfModule mod_headers.c>
+  <FilesMatch "\.js$">
+    Header set Cache-Control "public, max-age=86400"
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
