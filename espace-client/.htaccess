@@ -1,0 +1,14 @@
+# Espace client IZENINFO
+DirectoryIndex index.html
+Options -Indexes
+<FilesMatch "^(_|\.)">
+  Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header always set X-Robots-Tag "noindex, nofollow"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "same-origin"
+  <FilesMatch "\.(html|php)$">
+    Header set Cache-Control "no-store"
+  </FilesMatch>
+</IfModule>
