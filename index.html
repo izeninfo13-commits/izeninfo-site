@@ -121,6 +121,13 @@ nav.main a.on{color:#fff;background:rgba(134,173,255,.12)}
 nav.main a.on::after{transform:scaleX(1)}
 .h-actions{display:flex;align-items:center;gap:10px}
 .h-actions .btn{min-height:40px;padding:0 18px;font-size:14px}
+.client-link{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:4px;border:1px solid var(--line-2);background:rgba(234,240,250,.03);color:var(--ink);font:600 14px/1 var(--body);text-decoration:none;white-space:nowrap;transition:background-color .2s,border-color .2s,color .2s}
+.client-link:hover{background:rgba(134,173,255,.12);border-color:var(--accent);color:#fff}
+.client-link svg{color:var(--accent)}
+@media (max-width:1180px) and (min-width:901px){.client-link span{display:none}.client-link{width:40px;padding:0;justify-content:center}}
+@media (max-width:900px){.client-link{width:46px;height:46px;padding:0;justify-content:center}.client-link span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+.menu ul a.menu-client{display:inline-flex;align-items:center;gap:14px;color:var(--accent)}
+
 .burger{display:none;width:46px;height:46px;border-radius:4px;border:1px solid var(--line-2);background:transparent;color:var(--ink);place-items:center}
 .burger i{display:block;width:18px;height:1.5px;background:currentColor;box-shadow:0 6px 0 currentColor;transform:translateY(-3px)}
 @media (max-width:900px){nav.main{display:none}.burger{display:grid}.h-actions .btn{display:none}}
@@ -564,6 +571,7 @@ dialog.legal::backdrop{background:rgba(2,3,6,.75);backdrop-filter:blur(4px)}
     </nav>
     <div class="h-actions">
       <div class="lang"><button type="button" class="lang-btn" id="langBtn" aria-haspopup="true" aria-expanded="false" aria-controls="langMenu" aria-label="Langue · Language"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9s1.3-6.4 3.8-9z"/></svg><span id="langCur">FR</span></button><div class="lang-menu" id="langMenu" role="menu" hidden><button type="button" role="menuitemradio" data-lang="fr" aria-checked="false" lang="fr"><b>FR</b>Français</button><button type="button" role="menuitemradio" data-lang="en" aria-checked="false" lang="en"><b>EN</b>English</button><button type="button" role="menuitemradio" data-lang="es" aria-checked="false" lang="es"><b>ES</b>Español</button><button type="button" role="menuitemradio" data-lang="it" aria-checked="false" lang="it"><b>IT</b>Italiano</button><button type="button" role="menuitemradio" data-lang="de" aria-checked="false" lang="de"><b>DE</b>Deutsch</button></div></div>
+      <a class="client-link" href="/espace-client/" title="Espace client"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4.2 4.4-6 8-6s6.8 1.8 8 6"/></svg><span>Espace client</span></a>
       <a class="btn primary" href="#contact">Demander un devis <span class="arr">→</span></a>
       <button class="burger" id="burger" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu"><i></i></button>
     </div>
@@ -579,6 +587,7 @@ dialog.legal::backdrop{background:rgba(2,3,6,.75);backdrop-filter:blur(4px)}
     <li><a href="#tarifs" data-close>Tarifs</a></li>
     <li><a href="#studio" data-close>Studio</a></li>
     <li><a href="#contact" data-close>Contact</a></li>
+    <li><a class="menu-client" href="/espace-client/">Espace client</a></li>
   </ul>
   <div class="lang-row" role="group" aria-label="Langue · Language"><button type="button" data-lang="fr" lang="fr" aria-checked="false">FR</button><button type="button" data-lang="en" lang="en" aria-checked="false">EN</button><button type="button" data-lang="es" lang="es" aria-checked="false">ES</button><button type="button" data-lang="it" lang="it" aria-checked="false">IT</button><button type="button" data-lang="de" lang="de" aria-checked="false">DE</button></div>
   <div class="foot"><span>direction@izenride.com</span><span>07 66 44 30 53</span><span>Conception sur mesure</span><span>Formule Express : 7 jours ouvrés</span><span>Devis gratuit sous 24 h</span><span>Paiement en 3 fois sans frais</span></div>
