@@ -8,7 +8,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="app.css?v=2">
+<link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
 
@@ -50,6 +50,7 @@
   <main class="wrap" id="vStats">
     <div class="filters">
       <h1 id="siteTitle">Statistiques<small id="siteDomain"></small></h1>
+      <p class="rt pause" id="rt" role="status" aria-live="off"><i aria-hidden="true"></i><span>Connexion…</span></p>
       <select class="site" id="siteSel" aria-label="Choisir un site" hidden></select>
       <div class="tabs" id="ranges" role="group" aria-label="Période">
         <button type="button" data-range="today" aria-pressed="false">Aujourd'hui</button>
@@ -158,6 +159,6 @@
   </form>
 </dialog>
 
-<script src="app.js?v=2" defer></script>
+<script src="app.js?v=3" defer></script>
 </body>
 </html>

@@ -98,7 +98,9 @@ if ($a === 'live') {
     $count = (int)$db->query("SELECT COUNT(*) FROM live WHERE $IN AND ts>=$since")->fetchColumn();
     $label = $sc['all'] ? "(SELECT name FROM sites WHERE id=live.site_id)||' · '||path" : 'path';
     $pages = $db->query("SELECT $label AS path, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC LIMIT 8")->fetchAll();
-    izs_json(['count' => $count, 'pages' => $pages, 'at' => time()]);
+    /* Empreinte des données : change dès qu'une visite, une page vue ou un contact arrive. */
+    $rev = (int)$db->query("SELECT COALESCE(MAX(id),0) FROM hits WHERE $IN")->fetchColumn();
+    izs_json(['count' => $count, 'pages' => $pages, 'rev' => $rev, 'at' => time()]);
 }
 
 if ($a === 'stats') {

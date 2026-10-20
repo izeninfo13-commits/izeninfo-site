@@ -114,28 +114,65 @@
     }
     $("siteTitle").firstChild.textContent = state.site.name;
     $("siteDomain").textContent = state.site.domain;
-    loadStats(); loadLive();
-    liveTimer = setInterval(() => { if (!document.hidden) loadLive(); }, 10000);
+    state.rev = null; state.lastSync = 0; state.fails = 0;
+    loadStats(); pulse();
+    liveTimer = setInterval(() => { if (!document.hidden) pulse(); }, 5000);
     statsTimer = setInterval(() => { if (!document.hidden) loadStats(true); }, 60000);
   }
 
-  async function loadLive() {
+  /* Temps réel : toutes les 5 s, on interroge le serveur ; si une nouvelle donnée est arrivée
+     (visite, page vue, contact), tout le tableau de bord est rechargé aussitôt. */
+  let pulsing = false, loadingStats = false;
+  async function pulse() {
+    if (pulsing || !state.site) return;
+    pulsing = true;
     try {
       const l = await api("live", null, `&site=${state.site.id}`);
-      $("liveN").textContent = nf.format(l.count);
+      setText("liveN", nf.format(l.count));
       const many = state.site.id === "all";
       $("liveLbl").textContent = (l.count > 1 ? "visiteurs sur " : "visiteur sur ") + (many ? "l'ensemble des sites" : "le site");
       $("livePages").innerHTML = l.pages.slice(0, 4).map(p => `<li><span>${esc(p.path)}</span><span>${p.n}</span></li>`).join("");
-    } catch (e) {}
+      if (state.rev !== null && l.rev !== state.rev) loadStats(true);
+      state.rev = l.rev; state.lastSync = Date.now(); state.fails = 0;
+    } catch (e) { state.fails++; }
+    finally { pulsing = false; tick(); }
   }
 
   async function loadStats(quiet) {
+    if (loadingStats) { state.pending = true; return; }
+    loadingStats = true; state.pending = false;
     try {
       const d = await api("stats", null, `&site=${state.site.id}&range=${state.range}`);
       state.data = d; render(d);
-      $("updated").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    } catch (e) { if (!quiet) $("updated").textContent = e.message; }
+      state.lastSync = Date.now();
+      $("updated").textContent = "Dernière mise à jour à " + new Date().toLocaleTimeString("fr-FR");
+    } catch (e) { if (!quiet) $("updated").textContent = e.message; state.fails++; }
+    finally { loadingStats = false; tick(); if (state.pending) loadStats(true); }
   }
+
+  /* Indicateur « Temps réel » */
+  function tick() {
+    const el = $("rt"); if (!el) return;
+    let txt, cls;
+    if (document.hidden) { txt = "Temps réel en pause"; cls = "pause"; }
+    else if (state.fails >= 3) { txt = "Connexion perdue, nouvel essai…"; cls = "off"; }
+    else if (!state.lastSync) { txt = "Connexion…"; cls = "pause"; }
+    else { const sec = Math.max(0, Math.round((Date.now() - state.lastSync) / 1000)); txt = "Temps réel · actualisé " + (sec < 2 ? "à l'instant" : `il y a ${sec} s`); cls = "on"; }
+    el.querySelector("span").textContent = txt;
+    el.className = "rt " + cls;
+  }
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", () => { tick(); if (!document.hidden && state.site && !$("vStats").hidden) { pulse(); loadStats(true); } });
+
+  /* Met à jour un chiffre et le fait briller s'il a changé */
+  function setText(id, value, html) {
+    const el = $(id); if (!el) return;
+    const before = html ? el.innerHTML : el.textContent;
+    if (before === value) return;
+    if (html) el.innerHTML = value; else el.textContent = value;
+    if (before && before !== "–" && !reduceMotion) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+  }
+  const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function delta(cur, prev) {
     if (!prev && !cur) return "";
@@ -148,17 +185,17 @@
 
   function render(d) {
     const k = d.kpi, p = d.prev;
-    $("kV").textContent = nf.format(k.visitors); $("dV").innerHTML = delta(k.visitors, p.visitors);
-    $("kP").textContent = nf.format(k.pageviews); $("dP").innerHTML = delta(k.pageviews, p.pageviews);
-    $("kR").textContent = String(k.ppv).replace(".", ","); $("dR").innerHTML = delta(k.ppv, p.ppv);
-    $("kC").textContent = nf.format(k.contacts); $("dC").innerHTML = delta(k.contacts, p.contacts);
+    setText("kV", nf.format(k.visitors)); $("dV").innerHTML = delta(k.visitors, p.visitors);
+    setText("kP", nf.format(k.pageviews)); $("dP").innerHTML = delta(k.pageviews, p.pageviews);
+    setText("kR", String(k.ppv).replace(".", ",")); $("dR").innerHTML = delta(k.ppv, p.ppv);
+    setText("kC", nf.format(k.contacts)); $("dC").innerHTML = delta(k.contacts, p.contacts);
     const empty = !k.pageviews && !p.pageviews;
     $("install").hidden = !empty || d.all;
     renderCompare(d);
     if (empty) $("installCode").textContent = `<script defer src="https://izeninfo.fr/stats/t.js" data-site="${state.site.skey}"></script>`;
     const labels = { today: "Aujourd'hui, par heure", "7d": "7 derniers jours", "30d": "30 derniers jours", "12m": "12 derniers mois, par mois" };
     $("trafficSub").textContent = labels[d.range] || "";
-    chart(d);
+    if ($("chart").dataset.hover === "1") state.chartPending = true; else chart(d);
     table(d);
     const visits = d.devices.reduce((a, r) => a + r.n, 0);
     bars("lSources", d.sources, false, "Aucune visite sur la période");
@@ -166,7 +203,7 @@
     bars("lDevices", d.devices, visits, "Aucune donnée");
     bars("lCountries", d.countries, visits, "Aucune donnée");
     bars("lBrowsers", d.browsers, visits, "Aucune donnée");
-    $("eTel").textContent = nf.format(d.events.tel); $("eMail").textContent = nf.format(d.events.mail); $("eForm").textContent = nf.format(d.events.form);
+    setText("eTel", nf.format(d.events.tel)); setText("eMail", nf.format(d.events.mail)); setText("eForm", nf.format(d.events.form));
   }
 
   function renderCompare(d) {
@@ -248,7 +285,11 @@
     };
     hit.addEventListener("pointermove", show);
     hit.addEventListener("pointerdown", show);
-    hit.addEventListener("pointerleave", () => { hov.setAttribute("visibility", "hidden"); tip.hidden = true; });
+    hit.addEventListener("pointerenter", () => { box.dataset.hover = "1"; });
+    hit.addEventListener("pointerleave", () => {
+      hov.setAttribute("visibility", "hidden"); tip.hidden = true; box.dataset.hover = "";
+      if (state.chartPending) { state.chartPending = false; chart(state.data); }
+    });
   }
 
   function table(d) {
