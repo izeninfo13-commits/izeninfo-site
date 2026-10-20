@@ -166,3 +166,14 @@ dialog form{display:flex;flex-direction:column;gap:14px}
   .actions div{display:flex;align-items:center;justify-content:space-between}
   .actions b{margin:0}
 }
+/* Comparatif par site (administrateur) */
+.table-x{overflow-x:auto;margin:0 -4px;padding:0 4px}
+table.compare{min-width:760px;margin-top:4px}
+table.compare td small{display:block;color:var(--dim);font:400 12px var(--mono);margin-top:2px}
+table.compare td.txt,table.compare th.txt{text-align:left}
+table.compare tbody tr{cursor:pointer;transition:background-color .15s}
+table.compare tbody tr:hover,table.compare tbody tr:focus{background:rgba(134,173,255,.08);outline:none}
+table.compare .delta-cell{white-space:nowrap;color:var(--muted)}
+.delta-cell .up{color:#9BE29B}.delta-cell .down{color:#FFB4A8}
+.pill-live{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.pill-live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good)}

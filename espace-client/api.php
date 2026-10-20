@@ -79,22 +79,36 @@ if ($a === 'password' && $method === 'POST') {
 }
 
 /* ---------- Statistiques ---------- */
+/* Périmètre : un site, ou tous les sites pour l'administrateur (site=all). */
+function izs_scope(array $u): array {
+    $want = $_GET['site'] ?? '0';
+    if ($want === 'all') {
+        if ($u['role'] !== 'admin') izs_json(['error' => 'Accès réservé.'], 403);
+        $ids = array_map('intval', izs_db()->query('SELECT id FROM sites')->fetchAll(PDO::FETCH_COLUMN));
+        return ['all' => true, 'ids' => $ids ?: [0], 'site' => ['id' => 'all', 'name' => 'Tous les sites', 'domain' => count($ids) . ' sites suivis']];
+    }
+    $s = izs_site_or_403($u, $want);
+    return ['all' => false, 'ids' => [(int)$s['id']], 'site' => ['id' => (int)$s['id'], 'name' => $s['name'], 'domain' => $s['domain']]];
+}
+
 if ($a === 'live') {
-    $s = izs_site_or_403($u, $_GET['site'] ?? 0);
-    $st = $db->prepare('SELECT path, COUNT(*) n FROM live WHERE site_id=? AND ts>=? GROUP BY path ORDER BY n DESC LIMIT 8');
-    $st->execute([$s['id'], time() - 300]);
-    $pages = $st->fetchAll();
-    izs_json(['count' => array_sum(array_map(fn($r) => (int)$r['n'], $pages)), 'pages' => $pages, 'at' => time()]);
+    $sc = izs_scope($u);
+    $IN = 'site_id IN (' . implode(',', $sc['ids']) . ')';
+    $since = time() - 300;
+    $count = (int)$db->query("SELECT COUNT(*) FROM live WHERE $IN AND ts>=$since")->fetchColumn();
+    $label = $sc['all'] ? "(SELECT name FROM sites WHERE id=live.site_id)||' · '||path" : 'path';
+    $pages = $db->query("SELECT $label AS path, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC LIMIT 8")->fetchAll();
+    izs_json(['count' => $count, 'pages' => $pages, 'at' => time()]);
 }
 
 if ($a === 'stats') {
-    $s = izs_site_or_403($u, $_GET['site'] ?? 0);
-    $sid = (int)$s['id'];
+    $sc = izs_scope($u);
+    $IN = 'site_id IN (' . implode(',', $sc['ids']) . ')';
     $range = in_array($_GET['range'] ?? '', ['today', '7d', '30d', '90d', '12m'], true) ? $_GET['range'] : '30d';
     $now = time();
     $todayStart = strtotime('today');
     switch ($range) {
-        case 'today': $from = $todayStart; $len = $now - $from; $bucket = 'hour'; break;
+        case 'today': $from = $todayStart; $bucket = 'hour'; break;
         case '7d': $from = strtotime('-6 days', $todayStart); $bucket = 'day'; break;
         case '90d': $from = strtotime('-89 days', $todayStart); $bucket = 'day'; break;
         case '12m': $from = strtotime(date('Y-m-01', strtotime('-11 months', $todayStart))); $bucket = 'month'; break;
@@ -103,12 +117,12 @@ if ($a === 'stats') {
     $len = $now - $from;
     $pFrom = $from - $len; $pTo = $from;
 
-    $kpi = function (int $a, int $b) use ($db, $sid): array {
+    $kpi = function (int $a, int $b) use ($db, $IN): array {
         $st = $db->prepare("SELECT
-            (SELECT COALESCE(SUM(n),0) FROM (SELECT COUNT(DISTINCT vid) n FROM hits WHERE site_id=:s AND ts>=:a AND ts<:b AND kind='pv' GROUP BY day)) AS visitors,
-            (SELECT COUNT(*) FROM hits WHERE site_id=:s AND ts>=:a AND ts<:b AND kind='pv') AS pageviews,
-            (SELECT COUNT(*) FROM hits WHERE site_id=:s AND ts>=:a AND ts<:b AND kind='ev') AS contacts");
-        $st->execute([':s' => $sid, ':a' => $a, ':b' => $b]);
+            (SELECT COALESCE(SUM(n),0) FROM (SELECT COUNT(DISTINCT vid) n FROM hits WHERE $IN AND ts>=:a AND ts<:b AND kind='pv' GROUP BY site_id, day)) AS visitors,
+            (SELECT COUNT(*) FROM hits WHERE $IN AND ts>=:a AND ts<:b AND kind='pv') AS pageviews,
+            (SELECT COUNT(*) FROM hits WHERE $IN AND ts>=:a AND ts<:b AND kind='ev') AS contacts");
+        $st->execute([':a' => $a, ':b' => $b]);
         $r = array_map('intval', $st->fetch());
         $r['ppv'] = $r['visitors'] ? round($r['pageviews'] / $r['visitors'], 1) : 0;
         return $r;
@@ -116,17 +130,17 @@ if ($a === 'stats') {
     $cur = $kpi($from, $now + 1);
     $prev = $kpi($pFrom, $pTo);
 
-    /* Série temporelle (cases vides comprises) */
+    /* Série temporelle (cases vides comprises) ; visiteurs = somme des visiteurs uniques par site et par jour */
     $series = [];
     if ($bucket === 'hour') {
-        $st = $db->prepare("SELECT CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) h, COUNT(DISTINCT vid) v, COUNT(*) p FROM hits WHERE site_id=? AND ts>=? AND kind='pv' GROUP BY h");
-        $st->execute([$sid, $from]);
+        $st = $db->prepare("SELECT h, SUM(v) v, SUM(p) p FROM (SELECT CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) h, COUNT(DISTINCT vid) v, COUNT(*) p FROM hits WHERE $IN AND ts>=? AND kind='pv' GROUP BY site_id, h) GROUP BY h");
+        $st->execute([$from]);
         $rows = []; foreach ($st->fetchAll() as $r) $rows[(int)$r['h']] = $r;
         $hNow = (int)date('G');
         for ($h = 0; $h <= $hNow; $h++) $series[] = ['label' => sprintf('%02d h', $h), 'key' => (string)$h, 'visitors' => (int)($rows[$h]['v'] ?? 0), 'pageviews' => (int)($rows[$h]['p'] ?? 0)];
     } else {
-        $st = $db->prepare("SELECT day, COUNT(DISTINCT vid) v, COUNT(*) p FROM hits WHERE site_id=? AND ts>=? AND kind='pv' GROUP BY day");
-        $st->execute([$sid, $from]);
+        $st = $db->prepare("SELECT day, SUM(v) v, SUM(p) p FROM (SELECT day, COUNT(DISTINCT vid) v, COUNT(*) p FROM hits WHERE $IN AND ts>=? AND kind='pv' GROUP BY site_id, day) GROUP BY day");
+        $st->execute([$from]);
         $rows = []; foreach ($st->fetchAll() as $r) $rows[$r['day']] = $r;
         if ($bucket === 'day') {
             for ($t = $from; $t <= $now; $t = strtotime('+1 day', $t)) {
@@ -143,24 +157,56 @@ if ($a === 'stats') {
         }
     }
 
-    $top = function (string $col, string $where, int $limit = 8, string $count = 'COUNT(*)') use ($db, $sid, $from): array {
-        $st = $db->prepare("SELECT $col AS name, $count AS n FROM hits WHERE site_id=? AND ts>=? AND $where GROUP BY $col ORDER BY n DESC LIMIT $limit");
-        $st->execute([$sid, $from]);
+    $top = function (string $col, string $where, int $limit = 8, string $count = 'COUNT(*)') use ($db, $IN, $from): array {
+        $st = $db->prepare("SELECT $col AS name, $count AS n FROM hits WHERE $IN AND ts>=? AND $where GROUP BY 1 ORDER BY n DESC LIMIT $limit");
+        $st->execute([$from]);
         return array_map(fn($r) => ['name' => $r['name'], 'n' => (int)$r['n']], $st->fetchAll());
     };
+    $visits = 'COUNT(DISTINCT site_id||day||vid)';
     $events = ['tel' => 0, 'mail' => 0, 'form' => 0];
     foreach ($top('ev', "kind='ev'", 5) as $r) if (isset($events[$r['name']])) $events[$r['name']] = $r['n'];
 
-    izs_json([
-        'site' => ['id' => $sid, 'name' => $s['name'], 'domain' => $s['domain']],
+    $out = [
+        'site' => $sc['site'], 'all' => $sc['all'],
         'range' => $range, 'bucket' => $bucket, 'kpi' => $cur, 'prev' => $prev, 'series' => $series,
-        'sources' => $top('source', "kind='pv' AND source IS NOT NULL", 8, 'COUNT(DISTINCT day||vid)'),
-        'pages' => $top('path', "kind='pv'", 10),
-        'devices' => $top('device', "kind='pv'", 4, 'COUNT(DISTINCT day||vid)'),
-        'browsers' => $top('browser', "kind='pv'", 6, 'COUNT(DISTINCT day||vid)'),
-        'countries' => $top('country', "kind='pv'", 8, 'COUNT(DISTINCT day||vid)'),
+        'sources' => $top('source', "kind='pv' AND source IS NOT NULL", 8, $visits),
+        'pages' => $top($sc['all'] ? "(SELECT domain FROM sites WHERE id=hits.site_id)||path" : 'path', "kind='pv'", 10),
+        'devices' => $top('device', "kind='pv'", 4, $visits),
+        'browsers' => $top('browser', "kind='pv'", 6, $visits),
+        'countries' => $top('country', "kind='pv'", 8, $visits),
         'events' => $events,
-    ]);
+    ];
+
+    /* Comparatif par site (vue d'ensemble administrateur) */
+    if ($sc['all']) {
+        $per = function (int $a, int $b) use ($db): array {
+            $st = $db->prepare("SELECT site_id,
+                SUM(CASE WHEN kind='pv' THEN 1 ELSE 0 END) p, SUM(CASE WHEN kind='ev' THEN 1 ELSE 0 END) c
+                FROM hits WHERE ts>=? AND ts<? GROUP BY site_id");
+            $st->execute([$a, $b]);
+            $r = []; foreach ($st->fetchAll() as $x) $r[(int)$x['site_id']] = ['p' => (int)$x['p'], 'c' => (int)$x['c']];
+            $st = $db->prepare("SELECT site_id, SUM(n) v FROM (SELECT site_id, COUNT(DISTINCT vid) n FROM hits WHERE ts>=? AND ts<? AND kind='pv' GROUP BY site_id, day) GROUP BY site_id");
+            $st->execute([$a, $b]);
+            foreach ($st->fetchAll() as $x) $r[(int)$x['site_id']]['v'] = (int)$x['v'];
+            return $r;
+        };
+        $c = $per($from, $now + 1); $p = $per($pFrom, $pTo);
+        $live = [];
+        foreach ($db->query('SELECT site_id, COUNT(*) n FROM live WHERE ts>=' . ($now - 300) . ' GROUP BY site_id') as $x) $live[(int)$x['site_id']] = (int)$x['n'];
+        $rows = [];
+        foreach ($db->query('SELECT s.id, s.name, s.domain, s.user_id, u.name AS owner, u.role, (SELECT MAX(ts) FROM hits h WHERE h.site_id=s.id) last_hit FROM sites s LEFT JOIN users u ON u.id=s.user_id ORDER BY s.name') as $x) {
+            $id = (int)$x['id'];
+            $rows[] = ['id' => $id, 'name' => $x['name'], 'domain' => $x['domain'],
+                'owner' => $x['role'] === 'client' ? $x['owner'] : ($x['role'] === 'admin' ? 'Vous (IZENINFO)' : null),
+                'visitors' => $c[$id]['v'] ?? 0, 'pageviews' => $c[$id]['p'] ?? 0, 'contacts' => $c[$id]['c'] ?? 0,
+                'prev_visitors' => $p[$id]['v'] ?? 0, 'live' => $live[$id] ?? 0, 'last_hit' => $x['last_hit'] ? (int)$x['last_hit'] : null];
+        }
+        usort($rows, fn($a, $b) => $b['visitors'] <=> $a['visitors'] ?: strcmp($a['name'], $b['name']));
+        $out['per_site'] = $rows;
+        $clients = (int)$db->query("SELECT COUNT(*) FROM users WHERE role='client'")->fetchColumn();
+        $out['totals'] = ['sites' => count($rows), 'clients' => $clients, 'active' => count(array_filter($rows, fn($r) => $r['last_hit'] && $r['last_hit'] > $now - 7 * 86400))];
+    }
+    izs_json($out);
 }
 
 /* ---------- Administration (IZENINFO uniquement) ---------- */

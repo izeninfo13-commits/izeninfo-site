@@ -26,13 +26,21 @@
     if (!s.user) return showAuth(s.setup);
     $("vAuth").hidden = true; $("vApp").hidden = false;
     $("navTabs").hidden = s.user.role !== "admin";
-    const sel = $("siteSel");
-    sel.innerHTML = state.sites.map(x => `<option value="${x.id}">${esc(x.name)} · ${esc(x.domain)}</option>`).join("");
-    sel.hidden = state.sites.length < 2;
+    fillSites();
     let saved = null; try { saved = localStorage.getItem("izs-site"); } catch (e) {}
-    state.site = state.sites.find(x => String(x.id) === saved) || state.sites[0] || null;
-    if (state.site) sel.value = state.site.id;
+    const opts = siteOptions();
+    state.site = opts.find(x => String(x.id) === saved) || opts[0] || null;
+    if (state.site) $("siteSel").value = state.site.id;
     showView("stats");
+  }
+
+  const ALL = { id: "all", name: "Tous les sites", domain: "Vue d'ensemble de tous les comptes", skey: null };
+  function siteOptions() { return (state.user && state.user.role === "admin" && state.sites.length > 1 ? [ALL] : []).concat(state.sites); }
+  function fillSites() {
+    const sel = $("siteSel"), opts = siteOptions();
+    sel.innerHTML = opts.map(x => `<option value="${x.id}">${x.id === "all" ? "Tous les sites · vue d'ensemble" : esc(x.name) + " · " + esc(x.domain)}</option>`).join("");
+    sel.hidden = opts.length < 2;
+    if (state.site) sel.value = state.site.id;
   }
 
   function showAuth(setup) {
@@ -81,7 +89,7 @@
   }
 
   $("siteSel").addEventListener("change", e => {
-    state.site = state.sites.find(x => String(x.id) === e.target.value);
+    state.site = siteOptions().find(x => String(x.id) === e.target.value);
     try { localStorage.setItem("izs-site", state.site.id); } catch (err) {}
     startStats();
   });
@@ -98,6 +106,7 @@
 
   /* ---------------- Statistiques ---------------- */
   function startStats() {
+    clearInterval(liveTimer); clearInterval(statsTimer);
     if (!state.site) {
       $("siteTitle").firstChild.textContent = "Aucun site";
       $("siteDomain").textContent = "Votre accès n'est rattaché à aucun site pour le moment.";
@@ -114,7 +123,8 @@
     try {
       const l = await api("live", null, `&site=${state.site.id}`);
       $("liveN").textContent = nf.format(l.count);
-      $("liveLbl").textContent = l.count > 1 ? "visiteurs sur le site" : "visiteur sur le site";
+      const many = state.site.id === "all";
+      $("liveLbl").textContent = (l.count > 1 ? "visiteurs sur " : "visiteur sur ") + (many ? "l'ensemble des sites" : "le site");
       $("livePages").innerHTML = l.pages.slice(0, 4).map(p => `<li><span>${esc(p.path)}</span><span>${p.n}</span></li>`).join("");
     } catch (e) {}
   }
@@ -143,7 +153,8 @@
     $("kR").textContent = String(k.ppv).replace(".", ","); $("dR").innerHTML = delta(k.ppv, p.ppv);
     $("kC").textContent = nf.format(k.contacts); $("dC").innerHTML = delta(k.contacts, p.contacts);
     const empty = !k.pageviews && !p.pageviews;
-    $("install").hidden = !empty;
+    $("install").hidden = !empty || d.all;
+    renderCompare(d);
     if (empty) $("installCode").textContent = `<script defer src="https://izeninfo.fr/stats/t.js" data-site="${state.site.skey}"></script>`;
     const labels = { today: "Aujourd'hui, par heure", "7d": "7 derniers jours", "30d": "30 derniers jours", "12m": "12 derniers mois, par mois" };
     $("trafficSub").textContent = labels[d.range] || "";
@@ -156,6 +167,31 @@
     bars("lCountries", d.countries, visits, "Aucune donnée");
     bars("lBrowsers", d.browsers, visits, "Aucune donnée");
     $("eTel").textContent = nf.format(d.events.tel); $("eMail").textContent = nf.format(d.events.mail); $("eForm").textContent = nf.format(d.events.form);
+  }
+
+  function renderCompare(d) {
+    const box = $("compare");
+    box.hidden = !d.all;
+    if (!d.all) return;
+    const t = d.totals;
+    $("compareSub").textContent = `${t.sites} sites suivis · ${t.clients} compte${t.clients > 1 ? "s" : ""} client${t.clients > 1 ? "s" : ""} · ${t.active} site${t.active > 1 ? "s" : ""} actif${t.active > 1 ? "s" : ""} sur 7 jours`;
+    const pct = (c, p) => !p ? (c ? '<span class="up" aria-hidden="true">▲</span> nouveau' : "–") : (() => { const v = Math.round((c - p) / p * 100); return v === 0 ? "= stable" : `<span class="${v > 0 ? "up" : "down"}" aria-hidden="true">${v > 0 ? "▲" : "▼"}</span> ${v > 0 ? "+" : ""}${v} %`; })();
+    const last = ts => ts ? new Date(ts * 1000).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "aucune visite reçue";
+    $("compareBody").innerHTML = d.per_site.map(r => `<tr data-site="${r.id}" tabindex="0" title="Voir le détail de ${esc(r.name)}">
+      <td><strong>${esc(r.name)}</strong><small>${esc(r.domain)}</small></td>
+      <td class="txt">${r.owner ? esc(r.owner) : '<span class="muted">non attribué</span>'}</td>
+      <td>${r.live ? `<span class="pill-live">${r.live}</span>` : "0"}</td>
+      <td>${nf.format(r.visitors)}</td><td class="delta-cell">${pct(r.visitors, r.prev_visitors)}</td>
+      <td>${nf.format(r.pageviews)}</td><td>${nf.format(r.contacts)}</td><td class="txt">${last(r.last_hit)}</td></tr>`).join("");
+  }
+  $("compareBody").addEventListener("click", e => openSite(e.target.closest("tr")));
+  $("compareBody").addEventListener("keydown", e => { if (e.key === "Enter") openSite(e.target.closest("tr")); });
+  function openSite(tr) {
+    if (!tr) return;
+    const s = state.sites.find(x => String(x.id) === tr.dataset.site); if (!s) return;
+    state.site = s; $("siteSel").value = s.id;
+    try { localStorage.setItem("izs-site", s.id); } catch (err) {}
+    startStats(); window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function bars(id, rows, total, emptyMsg) {
@@ -287,8 +323,7 @@
       $("cResult").innerHTML = `<div class="secret"><p><strong>Accès créé.</strong> À transmettre au client :</p><p>Adresse : <strong>https://izeninfo.fr/espace-client/</strong><br>Identifiant : <strong>${esc(r.email)}</strong></p><p>Mot de passe (affiché une seule fois) :</p><span class="code">${esc(r.password)}</span><p style="margin-top:12px">Code de mesure à placer avant &lt;/head&gt; sur toutes les pages du site :</p><span class="code">${esc(r.snippet)}</span></div>`;
       e.target.reset();
       const s = await api("state"); state.sites = s.sites;
-      const sel = $("siteSel"); sel.innerHTML = state.sites.map(x => `<option value="${x.id}">${esc(x.name)} · ${esc(x.domain)}</option>`).join(""); sel.hidden = state.sites.length < 2;
-      if (state.site) sel.value = state.site.id;
+      fillSites();
       loadAdmin();
     } catch (err) { $("cErr").textContent = err.message; }
   });
