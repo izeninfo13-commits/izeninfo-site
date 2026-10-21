@@ -43,7 +43,7 @@ h1,h2,h3{font-family:var(--display);font-stretch:110%;font-weight:800;letter-spa
 .auth{min-height:100vh;display:grid;place-items:center;padding:24px var(--gutter);background:radial-gradient(60% 50% at 50% 0%,rgba(57,135,229,.18),transparent 70%)}
 .auth-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:clamp(24px,5vw,36px);display:flex;flex-direction:column;gap:18px}
 .logo{font:900 18px/1 var(--display);font-stretch:125%;letter-spacing:.06em;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
-.logo i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);margin-right:10px}
+
 .logo span{color:var(--accent)}
 .auth-card h1{font-size:26px}
 .auth-card form{display:flex;flex-direction:column;gap:14px}
@@ -186,3 +186,5 @@ table.compare .delta-cell{white-space:nowrap;color:var(--muted)}
 .flash{animation:flash 1.6s ease-out}
 @media (prefers-reduced-motion:reduce){.rt.on i{animation:none}.flash{animation:none}}
 @media (max-width:620px){.rt{order:3}}
+
+.logo{letter-spacing:.01em!important}.logo .mk{width:1.5em;height:1.5em;margin-right:.42em;flex:none;overflow:visible}.logo .dot{fill:var(--accent);transform-box:fill-box;transform-origin:center}@media (prefers-reduced-motion:no-preference){.logo .dot{animation:dotpulse 2.4s ease-in-out infinite}}@keyframes dotpulse{50%{opacity:.55;transform:scale(.8)}}
