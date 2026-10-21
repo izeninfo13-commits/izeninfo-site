@@ -24,8 +24,11 @@
     var ref = document.referrer, internal = 0;
     try { if (ref && new URL(ref).host === location.host) { ref = ""; internal = 1; } } catch (e) { ref = ""; }
     if (sent) internal = 1;
-    var q = new URLSearchParams(location.search);
-    send({ t: "pv", p: p, r: ref, i: internal, u: q.get("utm_source") || q.get("ref") || "", w: window.innerWidth, z: tz });
+    var q = new URLSearchParams(location.search), m = {};
+    /* Paramètres de campagne : publicités Google (gclid, gbraid, wbraid, gad_source), Microsoft, Facebook, UTM */
+    [["gclid", "gclid"], ["gbraid", "gbraid"], ["wbraid", "wbraid"], ["gad", "gad_source"], ["msclkid", "msclkid"], ["fbclid", "fbclid"],
+     ["us", "utm_source"], ["um", "utm_medium"], ["uc", "utm_campaign"]].forEach(function (k) { var v = q.get(k[1]); if (v) m[k[0]] = k[0] === "gclid" || k[0] === "gbraid" || k[0] === "wbraid" || k[0] === "msclkid" || k[0] === "fbclid" ? "1" : v.slice(0, 80); });
+    send({ t: "pv", p: p, r: ref, i: internal, u: q.get("utm_source") || q.get("ref") || "", q: m, w: window.innerWidth, z: tz });
     sent = true;
   }
   var sent = false;
