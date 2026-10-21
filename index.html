@@ -1286,12 +1286,16 @@ document.documentElement.classList.add("ready");
     x.clearRect(0, 0, W, H); grid();
     wins = wins.map(o => drawWin(o, now) ? o : mkWin(now, rnd(200, 1200)));
   };
-  const loop = now => { if (!run) return; frame(now); requestAnimationFrame(loop); };
+  let lastF = 0; const loop = now => { if (!run) return; if (now - lastF > 30){ lastF = now; frame(now); } requestAnimationFrame(loop); };
   size(); addEventListener("resize", size);
   addEventListener("pointermove", e => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight; }, { passive: true });
   if (reduce){ const now = performance.now(); wins.forEach(o => o.t0 = now - o.draw - 100); frame(now); run = false; return; }
-  new IntersectionObserver(e => { const v = e[0].isIntersecting; if (v && !run){ run = true; requestAnimationFrame(loop); } else if (!v) run = false; }).observe(c);
-  requestAnimationFrame(loop);
+  let vis = true, ready = false;
+  const start = () => { if (ready && vis && !run){ run = true; requestAnimationFrame(loop); } };
+  new IntersectionObserver(e => { vis = e[0].isIntersecting; if (vis) start(); else run = false; }).observe(c);
+  run = false; frame(performance.now());
+  const boot = () => setTimeout(() => { ready = true; start(); }, 1500);
+  document.readyState === "complete" ? boot() : addEventListener("load", boot, { once: true });
 })();
 
 /* En-tête : fond au défilement, se cache en descendant ; barre de progression ; lien actif */

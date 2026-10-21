@@ -11,6 +11,10 @@ RewriteEngine On
 RewriteCond %{HTTPS} off [OR]
 RewriteCond %{HTTP_HOST} ^www\. [NC]
 RewriteRule ^ https://izeninfo.fr%{REQUEST_URI} [L,R=301]
+# Dossiers sans barre finale : redirection propre (sans :443)
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteCond %{REQUEST_URI} !/$
+RewriteRule ^(.*)$ https://izeninfo.fr/$1/ [L,R=301]
 </IfModule>
 
 <IfModule mod_headers.c>
