@@ -23,7 +23,6 @@ p{margin:0 0 1em}
 /* En-tête */
 .top{display:flex;align-items:center;gap:20px;min-height:76px;border-bottom:1px solid var(--line)}
 .logo{display:inline-flex;align-items:center;gap:0;font:800 20px/1 var(--display);font-stretch:115%;letter-spacing:.04em;color:var(--ink);text-decoration:none}
-.logo i{margin-right:10px;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
 .logo span{color:var(--accent)}
 .top nav{margin-left:auto;display:flex;gap:22px;align-items:center}
 .top nav a{color:var(--muted);text-decoration:none;font-size:15px}
@@ -95,6 +94,14 @@ figcaption{font-size:14px;color:var(--dim);margin-top:10px}
 .links{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
 .links a{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:999px;text-decoration:none;color:var(--ink);font-size:15px}
 .links a:hover{border-color:var(--accent)}
+
+.logo{letter-spacing:.01em!important}
+.logo .mk{width:1.5em;height:1.5em;margin-right:.42em;flex:none;overflow:visible}
+.logo .dot{fill:var(--accent);transform-box:fill-box;transform-origin:center}
+@media (prefers-reduced-motion:no-preference){.logo .dot{animation:dotpulse 2.4s ease-in-out infinite}
+}
+@keyframes dotpulse{50%{opacity:.55;transform:scale(.8)}
+}
 
 /* Pied de page */
 .foot{margin-top:clamp(56px,8vw,104px);padding:32px 0 40px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px 28px;font:500 13px/1.6 var(--mono);color:var(--dim)}
