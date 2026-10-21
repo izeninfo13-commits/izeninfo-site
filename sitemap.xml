@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://izeninfo.fr/</loc><lastmod>2026-10-16</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://izeninfo.fr/</loc><lastmod>2026-10-21</lastmod><priority>1.0</priority></url>
+  <url><loc>https://izeninfo.fr/creation-site-internet-marseille/</loc><lastmod>2026-10-21</lastmod><priority>0.8</priority></url>
+  <url><loc>https://izeninfo.fr/site-vitrine/</loc><lastmod>2026-10-21</lastmod><priority>0.8</priority></url>
+  <url><loc>https://izeninfo.fr/boutique-en-ligne/</loc><lastmod>2026-10-21</lastmod><priority>0.8</priority></url>
+  <url><loc>https://izeninfo.fr/referencement-local/</loc><lastmod>2026-10-21</lastmod><priority>0.8</priority></url>
+  <url><loc>https://izeninfo.fr/realisations/izenride/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
+  <url><loc>https://izeninfo.fr/realisations/izencustom/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
+  <url><loc>https://izeninfo.fr/realisations/mycathome/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
+  <url><loc>https://izeninfo.fr/realisations/game-of-drone/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
+  <url><loc>https://izeninfo.fr/realisations/lentracte/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
 </urlset>

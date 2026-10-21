@@ -1,0 +1,33 @@
+# IZENINFO
+
+> Studio de conception et de développement web basé à Gémenos (13420), près de Marseille et d'Aubagne. Création de sites internet sur mesure, boutiques en ligne, outils métier et référencement local. Marque d'IZEN RIDE SAS (RCS Marseille 981 848 922).
+
+- Contact : direction@izenride.com · 07 66 44 30 53 · du lundi au vendredi, 9 h – 19 h
+- Adresse : 4 rue Massilie, 13420 Gémenos, France
+- Zone : Marseille, Aubagne, Gémenos, La Ciotat, Aix-en-Provence, Toulon et toute la France
+
+## Formules (tarifs HT, à partir de)
+
+- Site vitrine : 990 € (jusqu'à 5 pages, en ligne en 2 à 3 semaines)
+- Formule Express : 1 490 € (site vitrine en ligne en 7 jours ouvrés)
+- Site sur mesure : 2 490 € (pages illimitées, identité complète)
+- Boutique & outils : 3 490 € (e-commerce, espace client, back-office)
+- Lancement SEO : 590 € ; suivi Croissance locale : 390 €/mois
+- Maintenance, hébergement et nom de domaine : 39 €/mois sans engagement
+- Paiement en 3 fois sans frais sur toutes les formules
+
+## Pages
+
+- [Accueil](https://izeninfo.fr/) : présentation, réalisations, tarifs, FAQ, contact
+- [Création de site internet à Marseille](https://izeninfo.fr/creation-site-internet-marseille/)
+- [Site vitrine](https://izeninfo.fr/site-vitrine/)
+- [Boutique en ligne](https://izeninfo.fr/boutique-en-ligne/)
+- [Référencement local](https://izeninfo.fr/referencement-local/)
+
+## Études de cas
+
+- [IzenRide](https://izeninfo.fr/realisations/izenride/) : site de l'application GPS et communauté pour motards
+- [IzenCustom](https://izeninfo.fr/realisations/izencustom/) : e-commerce et configurateur pour un atelier de covering moto à Gémenos
+- [MyCatHome](https://izeninfo.fr/realisations/mycathome/) : refonte du site d'une pension féline près de Toulouse
+- [Game of Drone](https://izeninfo.fr/realisations/game-of-drone/) : site vitrine de pilotes de drones professionnels à Perpignan
+- [L'Entracte](https://izeninfo.fr/realisations/lentracte/) : site d'un restaurant au feu de bois à Auriol
