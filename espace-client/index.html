@@ -8,7 +8,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="app.css?v=5">
+<link rel="stylesheet" href="app.css?v=6">
 <style>.logo{gap:.55em!important;letter-spacing:0!important}.logo .wm{height:.95em;width:auto;display:block;overflow:visible}.logo .wm .a{fill:currentColor}.logo .wm .b{fill:var(--accent)}.e3{--s:2.05em;--c:currentColor;--k:var(--accent);width:var(--s);height:var(--s);display:inline-block;perspective:calc(var(--s)*6);flex:none}.e3 .r{position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;animation:e3spin 10s linear infinite}.e3 b{position:absolute;display:block;inset:20%;border:calc(var(--s)*.05) solid var(--c);border-radius:calc(var(--s)*.07)}.e3 .l1{transform:translateZ(calc(var(--s)*-.22))}.e3 .l3{transform:translateZ(calc(var(--s)*.22));border-color:var(--k);background:color-mix(in srgb,var(--k) 45%,transparent);animation:e3lift 3.2s ease-in-out infinite}@keyframes e3spin{from{transform:rotateX(58deg) rotateZ(0)}to{transform:rotateX(58deg) rotateZ(360deg)}}@keyframes e3lift{50%{transform:translateZ(calc(var(--s)*.34))}}@media (prefers-reduced-motion:reduce){.e3 .r,.e3 b{animation:none!important}.e3 .r{transform:rotateX(58deg) rotateZ(45deg)}}@media (max-width:440px){.logo .wm{height:.72em!important}.logo .e3{--s:1.6em}}</style>
 <style>.logo{gap:.7em!important}.logo .izm{width:1.95em;height:1.95em;flex:none;overflow:visible;transform-origin:50% 50%;animation:iztilt 9s ease-in-out infinite alternate}.logo .wm{height:.7em;width:auto;display:block}@keyframes iztilt{from{transform:perspective(320px) rotateY(-18deg)}to{transform:perspective(320px) rotateY(18deg)}}@media (prefers-reduced-motion:reduce){.logo .izm{animation:none}.shine{display:none}}@media (max-width:440px){.logo .wm{height:.5em!important}.logo .izm{width:1.7em;height:1.7em}}</style>
 </head>
@@ -74,6 +74,7 @@
         <div class="value" id="liveN">0</div>
         <div class="delta" id="liveLbl">visiteur sur le site</div>
         <ul id="livePages"></ul>
+        <p class="live-cities" id="liveCities" hidden></p>
       </div>
       <div class="card kpi"><div class="label">Visiteurs</div><div class="value" id="kV">–</div><div class="delta" id="dV"></div></div>
       <div class="card kpi"><div class="label">Pages vues</div><div class="value" id="kP">–</div><div class="delta" id="dP"></div></div>
@@ -103,14 +104,37 @@
       <p class="sub" style="margin:10px 0 0">Cliquez sur un site pour afficher son détail.</p>
     </section>
 
+    <section class="card mt" aria-labelledby="hProv">
+      <div class="card-head"><div><h2 id="hProv">Provenance des visites</h2><p class="sub">Par où arrivent vos visiteurs, et lesquels vous contactent</p></div></div>
+      <div class="prov">
+        <div class="table-x"><table class="data chan"><thead><tr><th class="txt">Canal</th><th>Visites</th><th>Part</th><th>Contacts</th><th>Taux de contact</th></tr></thead><tbody id="chanBody"></tbody></table></div>
+        <div><h3 class="h3">Sources détaillées</h3><ul class="bars" id="lSources"></ul></div>
+      </div>
+    </section>
+
+    <section class="card mt ads" id="adsCard" hidden aria-labelledby="hAds">
+      <div class="card-head">
+        <div><h2 id="hAds">Google Ads : est-ce rentable ?</h2><p class="sub" id="adsSub">Visites issues de vos annonces payantes Google et contacts qu'elles génèrent</p></div>
+        <form class="budget" id="fBudget" novalidate><label for="iBudget">Budget Google Ads mensuel</label><span><input id="iBudget" inputmode="decimal" placeholder="ex. 150"> €</span><button class="btn sm" type="submit">Enregistrer</button></form>
+      </div>
+      <p class="verdict" id="adsVerdict"></p>
+      <div class="ads-kpis" id="adsKpis"></div>
+      <div class="grid three mt-s">
+        <div><h3 class="h3">Campagnes</h3><ul class="bars" id="lAdsCamp"></ul></div>
+        <div><h3 class="h3">Villes des visiteurs Google Ads</h3><ul class="bars" id="lAdsCities"></ul></div>
+        <div><h3 class="h3">Pages d'arrivée</h3><ul class="bars" id="lAdsPages"></ul></div>
+      </div>
+      <p class="note" id="adsNote"></p>
+    </section>
+
     <section class="grid two mt">
-      <div class="card"><h2>Provenance</h2><p class="sub">D'où arrivent vos visiteurs (visites)</p><ul class="bars" id="lSources"></ul></div>
+      <div class="card"><h2>Villes</h2><p class="sub" id="citiesSub">Ville approximative des visiteurs (visites)</p><ul class="bars" id="lCities"></ul></div>
       <div class="card"><h2>Pages les plus vues</h2><p class="sub">Pages vues sur la période</p><ul class="bars" id="lPages"></ul></div>
     </section>
 
     <section class="grid three mt">
       <div class="card"><h2>Appareils</h2><p class="sub">Part des visites</p><ul class="bars" id="lDevices"></ul></div>
-      <div class="card"><h2>Pays</h2><p class="sub">D'après le fuseau horaire du visiteur</p><ul class="bars" id="lCountries"></ul></div>
+      <div class="card"><h2>Pays</h2><p class="sub">Part des visites</p><ul class="bars" id="lCountries"></ul></div>
       <div class="card"><h2>Navigateurs</h2><p class="sub">Part des visites</p><ul class="bars" id="lBrowsers"></ul></div>
     </section>
 
@@ -125,7 +149,7 @@
     </section>
 
     <footer class="foot">
-      <span>Mesure d'audience sans cookie, hébergée en France. Aucune adresse IP n'est conservée.</span>
+      <span>Mesure d'audience sans cookie, hébergée en France. Aucune adresse IP n'est conservée : seule la ville approximative est déduite au moment de la visite. Géolocalisation : <a href="https://db-ip.com" rel="noopener" target="_blank">IP Geolocation by DB-IP</a>.</span>
       <span id="updated"></span>
     </footer>
   </main>
@@ -161,6 +185,6 @@
   </form>
 </dialog>
 
-<script src="app.js?v=3" defer></script>
+<script src="app.js?v=4" defer></script>
 </body>
 </html>

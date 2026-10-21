@@ -132,6 +132,9 @@
       const many = state.site.id === "all";
       $("liveLbl").textContent = (l.count > 1 ? "visiteurs sur " : "visiteur sur ") + (many ? "l'ensemble des sites" : "le site");
       $("livePages").innerHTML = l.pages.slice(0, 4).map(p => `<li><span>${esc(p.path)}</span><span>${p.n}</span></li>`).join("");
+      const lc = $("liveCities"), cs = (l.cities || []).filter(c => c.n);
+      lc.hidden = !cs.length;
+      setText("liveCities", cs.length ? `<b>Villes en direct</b>` + cs.slice(0, 6).map(c => `<span class="chip">${esc(c.name)} <i>${c.n}</i></span>`).join("") : "", true);
       if (state.rev !== null && l.rev !== state.rev) loadStats(true);
       state.rev = l.rev; state.lastSync = Date.now(); state.fails = 0;
     } catch (e) { state.fails++; }
@@ -199,12 +202,77 @@
     table(d);
     const visits = d.devices.reduce((a, r) => a + r.n, 0);
     bars("lSources", d.sources, false, "Aucune visite sur la période");
+    renderChannels(d);
+    const cityVisits = d.cities.reduce((a, r) => a + r.n, 0) + (d.unknown_city || 0);
+    bars("lCities", d.cities, cityVisits, "Aucune ville identifiée pour le moment");
+    $("citiesSub").textContent = "Ville approximative des visiteurs (visites)" + (d.unknown_city ? ` · ${nf.format(d.unknown_city)} visite${d.unknown_city > 1 ? "s" : ""} hors zone ou non identifiée${d.unknown_city > 1 ? "s" : ""}` : "");
+    renderAds(d);
     bars("lPages", d.pages, false, "Aucune page vue sur la période");
     bars("lDevices", d.devices, visits, "Aucune donnée");
     bars("lCountries", d.countries, visits, "Aucune donnée");
     bars("lBrowsers", d.browsers, visits, "Aucune donnée");
     setText("eTel", nf.format(d.events.tel)); setText("eMail", nf.format(d.events.mail)); setText("eForm", nf.format(d.events.form));
   }
+
+  const CH_COLORS = { "Google Ads (payant)": "#3987e5", "Google (naturel)": "#5FC58A", "Fiche Google (Maps)": "#E8B44A", "Accès direct": "#8D9AB3",
+    "Réseaux sociaux": "#C08CF0", "Autres moteurs": "#4FC3C9", "Sites référents": "#d95926", "E-mail": "#F08CB4", "Autres publicités": "#7FA8F0", "Campagnes (UTM)": "#B7C7A0", "Non attribué": "#5A6680" };
+  const pctFmt = v => String(v).replace(".", ",") + " %";
+  function renderChannels(d) {
+    const rows = d.channels || [];
+    const total = rows.reduce((a, r) => a + r.visits, 0);
+    const rates = rows.filter(r => r.visits >= 5).map(r => r.converted / r.visits);
+    const best = rates.length ? Math.max(...rates) : -1;
+    $("chanBody").innerHTML = rows.length ? rows.map(r => {
+      const rate = r.visits ? r.converted / r.visits : 0;
+      return `<tr class="${r.name === "Google Ads (payant)" ? "paid" : ""}"><td class="txt"><span class="dot" style="background:${CH_COLORS[r.name] || "#8D9AB3"}"></span>${esc(r.name)}</td>
+        <td>${nf.format(r.visits)}</td><td>${total ? Math.round(r.visits / total * 100) + " %" : "–"}</td><td>${nf.format(r.contacts)}</td>
+        <td class="rate ${r.visits >= 5 && rate === best && best > 0 ? "best" : ""}">${r.visits ? pctFmt(Math.round(rate * 1000) / 10) : "–"}</td></tr>`;
+    }).join("") : `<tr><td class="txt" colspan="5">Aucune visite sur la période</td></tr>`;
+  }
+
+  const euro = v => v == null ? "–" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: v < 10 ? 2 : 0 }).format(v);
+  function renderAds(d) {
+    const box = $("adsCard"), A = d.ads;
+    box.hidden = !A;
+    if (!A) return;
+    if (document.activeElement !== $("iBudget")) $("iBudget").value = A.budget || "";
+    const k = (label, value, small) => `<div><span>${label}</span><b>${value}</b>${small ? `<small>${small}</small>` : ""}</div>`;
+    $("adsKpis").innerHTML = [
+      k("Visites Google Ads", nf.format(A.visits), `${pctFmt(A.share)} du trafic`),
+      k("Contacts obtenus", nf.format(A.contacts), `${nf.format(A.converted)} visiteur${A.converted > 1 ? "s ont" : " a"} contacté`),
+      k("Taux de contact", A.visits ? pctFmt(A.rate) : "–", `autres canaux : ${pctFmt(A.other_rate)}`),
+      k("Pages par visite", String(A.ppv).replace(".", ","), `autres canaux : ${String(A.other_ppv).replace(".", ",")}`),
+      k("Coût par visite", A.cpv != null ? euro(A.cpv) : "–", A.budget ? `budget estimé ${euro(A.spent)} sur ${A.days} j` : "renseignez le budget"),
+      k("Coût par contact", A.cpc != null ? euro(A.cpc) : "–", A.budget ? (A.converted ? "par visiteur ayant contacté" : "aucun contact sur la période") : "renseignez le budget"),
+    ].join("");
+    bars("lAdsCamp", A.campaigns, false, "Aucune campagne sur la période");
+    bars("lAdsCities", A.cities, A.visits, "Aucune ville identifiée");
+    bars("lAdsPages", A.landing, false, "Aucune page d'arrivée");
+    const v = $("adsVerdict");
+    let txt, cls;
+    if (!A.visits) {
+      txt = "Aucune visite issue de Google Ads sur cette période. Si des annonces sont actives, vérifiez que le marquage automatique (paramètre gclid) est activé dans le compte Google Ads : sans lui, les clics payants ne peuvent pas être distingués de Google naturel.";
+      cls = "warn";
+    } else if (A.converted === 0) {
+      txt = `Les annonces ont amené ${nf.format(A.visits)} visite${A.visits > 1 ? "s" : ""}, mais aucune n'a abouti à un appel, un e-mail ou un formulaire${A.budget ? ` pour un budget estimé de ${euro(A.spent)}` : ""}. À surveiller : ciblage des mots-clés et des villes, page d'arrivée.`;
+      cls = "bad";
+    } else if (A.rate >= A.other_rate) {
+      txt = `Les annonces sont efficaces : ${pctFmt(A.rate)} des visiteurs Google Ads vous contactent, contre ${pctFmt(A.other_rate)} pour les autres canaux${A.cpc != null ? `, soit environ ${euro(A.cpc)} par contact` : ""}.`;
+      cls = "good";
+    } else {
+      txt = `Les annonces génèrent des contacts (${nf.format(A.contacts)}), mais convertissent moins que vos autres canaux (${pctFmt(A.rate)} contre ${pctFmt(A.other_rate)})${A.cpc != null ? ` ; coût estimé ${euro(A.cpc)} par contact` : ""}.`;
+      cls = "warn";
+    }
+    v.textContent = txt; v.className = "verdict " + cls;
+    $("adsNote").textContent = "Les visites Google Ads sont reconnues grâce au marquage automatique de Google (gclid, gbraid, wbraid, gad_source) ou aux paramètres UTM « cpc ». Un contact = clic sur le téléphone, sur l'e-mail ou formulaire envoyé pendant la visite. Le coût est estimé à partir du budget mensuel renseigné, réparti sur la période. Les villes sont approximatives (localisation de l'opérateur internet).";
+  }
+  $("fBudget").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!state.site || state.site.id === "all") return;
+    const btn = e.target.querySelector("button");
+    try { await api("set_budget", { site_id: state.site.id, budget: $("iBudget").value }); btn.textContent = "Enregistré"; setTimeout(() => btn.textContent = "Enregistrer", 1500); loadStats(true); }
+    catch (err) { btn.textContent = "Erreur"; }
+  });
 
   function renderCompare(d) {
     const box = $("compare");

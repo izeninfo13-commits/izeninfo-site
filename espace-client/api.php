@@ -100,7 +100,9 @@ if ($a === 'live') {
     $pages = $db->query("SELECT $label AS path, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC LIMIT 8")->fetchAll();
     /* Empreinte des données : change dès qu'une visite, une page vue ou un contact arrive. */
     $rev = (int)$db->query("SELECT COALESCE(MAX(id),0) FROM hits WHERE $IN")->fetchColumn();
-    izs_json(['count' => $count, 'pages' => $pages, 'rev' => $rev, 'at' => time()]);
+    $cities = $db->query("SELECT COALESCE(city,'Ville non identifiée') AS name, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC, name LIMIT 8")->fetchAll();
+    $chans = $db->query("SELECT COALESCE(ch,'Accès direct') AS name, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC LIMIT 6")->fetchAll();
+    izs_json(['count' => $count, 'pages' => $pages, 'cities' => $cities, 'channels' => $chans, 'rev' => $rev, 'at' => time()]);
 }
 
 if ($a === 'stats') {
@@ -168,7 +170,67 @@ if ($a === 'stats') {
     $events = ['tel' => 0, 'mail' => 0, 'form' => 0];
     foreach ($top('ev', "kind='ev'", 5) as $r) if (isset($events[$r['name']])) $events[$r['name']] = $r['n'];
 
+    /* Canal d'arrivée (données antérieures : déduit de la source) */
+    $CH = "COALESCE(ch, CASE WHEN source IS NULL THEN 'Non attribué' WHEN source='Accès direct' THEN 'Accès direct' WHEN source='Google' THEN 'Google (naturel)'
+        WHEN source IN ('Bing','Yahoo','DuckDuckGo','Ecosia','Qwant') THEN 'Autres moteurs' WHEN source='Google Maps' THEN 'Fiche Google (Maps)'
+        WHEN source IN ('Facebook','Instagram','LinkedIn','X / Twitter','TikTok','YouTube','Pinterest') THEN 'Réseaux sociaux' ELSE 'Sites référents' END)";
+    $st = $db->prepare("SELECT $CH AS name,
+        COUNT(DISTINCT CASE WHEN kind='pv' THEN site_id||day||vid END) AS visits,
+        SUM(CASE WHEN kind='pv' THEN 1 ELSE 0 END) AS pages,
+        SUM(CASE WHEN kind='ev' THEN 1 ELSE 0 END) AS contacts,
+        COUNT(DISTINCT CASE WHEN kind='ev' THEN site_id||day||vid END) AS converted
+        FROM hits WHERE $IN AND ts>=? GROUP BY 1 ORDER BY visits DESC");
+    $st->execute([$from]);
+    $channels = array_values(array_filter(array_map(fn($r) => ['name' => $r['name'], 'visits' => (int)$r['visits'], 'pages' => (int)$r['pages'],
+        'contacts' => (int)$r['contacts'], 'converted' => (int)$r['converted']], $st->fetchAll()), fn($r) => $r['visits'] || $r['contacts']));
+
+    $cityCol = "city||CASE WHEN region IS NOT NULL AND region<>'' THEN ' · '||region ELSE '' END";
+    $cities = $top($cityCol, "kind='pv' AND city IS NOT NULL", 12, $visits);
+    $unknownCity = (int)$db->query("SELECT COUNT(DISTINCT site_id||day||vid) FROM hits WHERE $IN AND ts>=$from AND kind='pv' AND city IS NULL")->fetchColumn();
+
+    /* Google Ads : visites payantes, contacts obtenus, coût si le budget est renseigné */
+    $ADS = "ch='Google Ads (payant)'";
+    $ads = null;
+    if (!$sc['all']) {
+        $q1 = $db->prepare("SELECT COUNT(DISTINCT CASE WHEN kind='pv' THEN day||vid END) v, SUM(CASE WHEN kind='pv' THEN 1 ELSE 0 END) p,
+            SUM(CASE WHEN kind='ev' THEN 1 ELSE 0 END) c, COUNT(DISTINCT CASE WHEN kind='ev' THEN day||vid END) cv,
+            COUNT(DISTINCT CASE WHEN kind='pv' AND device='Mobile' THEN day||vid END) mob FROM hits WHERE $IN AND ts>=? AND $ADS");
+        $q1->execute([$from]); $A = array_map('intval', $q1->fetch());
+        $q2 = $db->prepare("SELECT COUNT(DISTINCT CASE WHEN kind='pv' THEN day||vid END) v, COUNT(DISTINCT CASE WHEN kind='ev' THEN day||vid END) cv,
+            SUM(CASE WHEN kind='pv' THEN 1 ELSE 0 END) p FROM hits WHERE $IN AND ts>=? AND ($CH)<>'Google Ads (payant)'");
+        $q2->execute([$from]); $O = array_map('intval', $q2->fetch());
+        $sub = function (string $col, string $where, int $n = 6) use ($db, $IN, $from, $ADS): array {
+            $st = $db->prepare("SELECT $col AS name, COUNT(DISTINCT day||vid) AS n FROM hits WHERE $IN AND ts>=? AND $ADS AND $where GROUP BY 1 ORDER BY n DESC LIMIT $n");
+            $st->execute([$from]);
+            return array_map(fn($r) => ['name' => $r['name'], 'n' => (int)$r['n']], $st->fetchAll());
+        };
+        $budget = (int)$db->query('SELECT COALESCE(ads_budget,0) FROM sites WHERE id=' . (int)$sc['ids'][0])->fetchColumn();
+        $days = max(1, (int)ceil(($now - $from) / 86400));
+        $spent = $budget ? round($budget * 12 / 365 * $days, 2) : null;
+        $adsSeries = [];
+        if ($A['v']) {
+            $st = $db->prepare("SELECT day, COUNT(DISTINCT vid) n FROM hits WHERE $IN AND ts>=? AND $ADS AND kind='pv' GROUP BY day");
+            $st->execute([$from]); foreach ($st->fetchAll() as $r) $adsSeries[$r['day']] = (int)$r['n'];
+        }
+        $ads = [
+            'visits' => $A['v'], 'pages' => $A['p'], 'contacts' => $A['c'], 'converted' => $A['cv'], 'mobile' => $A['mob'],
+            'ppv' => $A['v'] ? round($A['p'] / $A['v'], 1) : 0,
+            'rate' => $A['v'] ? round($A['cv'] / $A['v'] * 100, 1) : 0,
+            'other_rate' => $O['v'] ? round($O['cv'] / $O['v'] * 100, 1) : 0,
+            'other_ppv' => $O['v'] ? round($O['p'] / $O['v'], 1) : 0,
+            'share' => ($A['v'] + $O['v']) ? round($A['v'] / ($A['v'] + $O['v']) * 100, 1) : 0,
+            'campaigns' => $sub("COALESCE(camp,'Campagne non nommée')", "kind='pv' AND source IS NOT NULL"),
+            'cities' => $sub($cityCol, "kind='pv' AND city IS NOT NULL"),
+            'landing' => $sub('path', "kind='pv' AND source IS NOT NULL"),
+            'budget' => $budget ?: null, 'spent' => $spent, 'days' => $days,
+            'cpv' => $spent && $A['v'] ? round($spent / $A['v'], 2) : null,
+            'cpc' => $spent && $A['cv'] ? round($spent / $A['cv'], 2) : null,
+            'series' => $adsSeries,
+        ];
+    }
+
     $out = [
+        'channels' => $channels, 'cities' => $cities, 'unknown_city' => $unknownCity, 'ads' => $ads,
         'site' => $sc['site'], 'all' => $sc['all'],
         'range' => $range, 'bucket' => $bucket, 'kpi' => $cur, 'prev' => $prev, 'series' => $series,
         'sources' => $top('source', "kind='pv' AND source IS NOT NULL", 8, $visits),
@@ -209,6 +271,14 @@ if ($a === 'stats') {
         $out['totals'] = ['sites' => count($rows), 'clients' => $clients, 'active' => count(array_filter($rows, fn($r) => $r['last_hit'] && $r['last_hit'] > $now - 7 * 86400))];
     }
     izs_json($out);
+}
+
+/* Budget Google Ads mensuel du site (renseigné par le client ou par IZENINFO) */
+if ($a === 'set_budget' && $method === 'POST') {
+    $s = izs_site_or_403($u, $in['site_id'] ?? 0);
+    $b = max(0, min(1000000, (int)round((float)str_replace(',', '.', (string)($in['budget'] ?? 0)))));
+    $db->prepare('UPDATE sites SET ads_budget=? WHERE id=?')->execute([$b ?: null, $s['id']]);
+    izs_json(['ok' => true, 'budget' => $b]);
 }
 
 /* ---------- Administration (IZENINFO uniquement) ---------- */

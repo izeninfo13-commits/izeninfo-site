@@ -12,6 +12,7 @@ const IZS_SITES = [
     'gameofdrone' => ['Game of Drone', 'game-of-drone.fr'],
     'lentracte'   => ["L'Entracte", 'lentracte-auriol.fr'],
 ];
+if (!function_exists('str_contains')) { function str_contains(string $h, string $n): bool { return $n === '' || strpos($h, $n) !== false; } }
 if (!function_exists('str_ends_with')) { function str_ends_with(string $h, string $n): bool { return $n === '' || substr($h, -strlen($n)) === $n; } }
 
 /* Dossier des données : hors du dossier public si possible (non écrasé par les déploiements Git). */
@@ -50,10 +51,56 @@ function izs_db(): PDO {
     $db->exec('CREATE INDEX IF NOT EXISTS hits_site_ts ON hits(site_id, ts)');
     $db->exec('CREATE TABLE IF NOT EXISTS live(
         site_id INTEGER NOT NULL, vid TEXT NOT NULL, path TEXT, ts INTEGER NOT NULL, PRIMARY KEY(site_id, vid))');
+    izs_migrate($db);
     /* Sites réalisés par IZENINFO : référencés d'office, avec une clé de mesure fixe. */
     $ins = $db->prepare('INSERT OR IGNORE INTO sites(user_id,name,domain,skey,created) VALUES(NULL,?,?,?,?)');
     foreach (IZS_SITES as $k => [$name, $domain]) $ins->execute([$name, $domain, $k, time()]);
     return $db;
+}
+
+/* Évolutions du schéma (colonnes ajoutées sans perte de données). */
+function izs_migrate(PDO $db): void {
+    $want = ['hits' => ['city' => 'TEXT', 'region' => 'TEXT', 'ch' => 'TEXT', 'camp' => 'TEXT'],
+             'live' => ['city' => 'TEXT', 'ch' => 'TEXT'],
+             'sites' => ['ads_budget' => 'INTEGER']];
+    foreach ($want as $t => $cols) {
+        $have = array_column($db->query("PRAGMA table_info($t)")->fetchAll(), 'name');
+        foreach ($cols as $c => $type) if (!in_array($c, $have, true)) $db->exec("ALTER TABLE $t ADD COLUMN $c $type");
+    }
+    $db->exec('CREATE INDEX IF NOT EXISTS hits_visit ON hits(site_id, day, vid)');
+}
+
+/* Ville approximative déduite de l'adresse IP au moment de la visite (base DB-IP Lite, CC BY 4.0).
+   L'adresse IP n'est ni stockée ni transmise à un tiers : seule la ville est conservée. */
+function izs_geo(string $ip): ?array {
+    static $g = false;
+    if ($g === false) {
+        /* La base est livrée compressée ; elle est décompressée une fois dans le dossier des données. */
+        $f = izs_data_dir() . '/geo.sqlite';
+        $gz = dirname(__DIR__) . '/stats/geo/geo.sqlite.gz';
+        if (is_file($gz) && (!is_file($f) || filemtime($f) < filemtime($gz))) {
+            $in = @gzopen($gz, 'rb'); $tmp = $f . '.tmp'; $out = @fopen($tmp, 'wb');
+            if ($in && $out) { while (!gzeof($in)) fwrite($out, gzread($in, 1 << 20)); gzclose($in); fclose($out); @rename($tmp, $f); }
+        }
+        $g = is_file($f) ? new PDO('sqlite:' . $f, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]) : null;
+    }
+    if (!$g) return null;
+    $bin = @inet_pton($ip);
+    if ($bin === false) return null;
+    if (strlen($bin) === 4) {
+        $n = unpack('N', $bin)[1];
+        $st = $g->prepare('SELECT e,p FROM v4 WHERE s<=? ORDER BY s DESC LIMIT 1');
+        $st->bindValue(1, $n, PDO::PARAM_INT); $st->execute();
+        $r = $st->fetch(); if (!$r || (int)$r['e'] < $n) return null;
+    } else {
+        $st = $g->prepare('SELECT e,p FROM v6 WHERE s<=? ORDER BY s DESC LIMIT 1');
+        $st->bindValue(1, $bin, PDO::PARAM_LOB); $st->execute();
+        $r = $st->fetch(); if (!$r) return null;
+        $e = is_resource($r['e']) ? stream_get_contents($r['e']) : $r['e'];
+        if (strcmp($e, $bin) < 0) return null;
+    }
+    $st = $g->prepare('SELECT cc,region,city FROM p WHERE id=?'); $st->execute([(int)$r['p']]);
+    return $st->fetch() ?: null;
 }
 
 /* Sel quotidien : les visiteurs ne sont pas suivis d'un jour à l'autre et aucune IP n'est stockée. */
