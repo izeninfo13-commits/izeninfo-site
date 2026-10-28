@@ -31,6 +31,27 @@ if ($host !== $site['domain'] && !str_ends_with($host, '.' . $site['domain'])) {
 
 $now = time();
 $vid = substr(hash('sha256', izs_salt() . '|' . $site['id'] . '|' . izs_client_ip() . '|' . $ua), 0, 20);
+/* Engagement et vitesse d'une page vue (une ligne par affichage, mise à jour à chaque envoi). */
+if (($d['t'] ?? '') === 'en') {
+    $x = preg_replace('/[^a-z0-9]/', '', strtolower((string)($d['x'] ?? '')));
+    if (strlen($x) < 8) { http_response_code(204); exit; }
+    $p = substr(preg_replace('/[?#].*$/', '', (string)($d['p'] ?? '/')) ?: '/', 0, 200);
+    $num = fn($a, $k, $max) => isset($a[$k]) && is_numeric($a[$k]) ? max(0, min($max, $a[$k] + 0)) : null;
+    $v = is_array($d['v'] ?? null) ? $d['v'] : [];
+    $dev = preg_match('/iPad|Tablet|PlayBook|Silk|Kindle/i', $ua) || (preg_match('/Android/i', $ua) && !preg_match('/Mobile/i', $ua)) ? 'Tablette'
+         : (preg_match('/Mobi|iPhone|iPod|Android|Windows Phone/i', $ua) ? 'Mobile' : 'Ordinateur');
+    $lcp = $num($v, 'lcp', 120000); $cls = $num($v, 'cls', 10); $inp = $num($v, 'inp', 60000); $fcp = $num($v, 'fcp', 120000); $ttfb = $num($v, 'ttfb', 120000);
+    $stt = $num($d, 'st', 599);
+    $db->prepare('INSERT INTO eng(site_id,pvid,ts,day,vid,path,dur,scroll,lcp,cls,inp,fcp,ttfb,status,device) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(site_id,pvid) DO UPDATE SET dur=MAX(eng.dur,excluded.dur), scroll=MAX(eng.scroll,excluded.scroll),
+        lcp=COALESCE(excluded.lcp,eng.lcp), cls=COALESCE(excluded.cls,eng.cls), inp=COALESCE(excluded.inp,eng.inp),
+        fcp=COALESCE(excluded.fcp,eng.fcp), ttfb=COALESCE(excluded.ttfb,eng.ttfb), status=COALESCE(excluded.status,eng.status)')
+       ->execute([$site['id'], substr($x, 0, 24), $now, date('Y-m-d', $now), $vid, $p, (int)($num($d, 'd', 1800000) ?? 0), (int)($num($d, 's', 100) ?? 0),
+                  $lcp === null ? null : (int)$lcp, $cls === null ? null : (float)$cls, $inp === null ? null : (int)$inp,
+                  $fcp === null ? null : (int)$fcp, $ttfb === null ? null : (int)$ttfb, $stt ? (int)$stt : null, $dev]);
+    http_response_code(204); exit;
+}
+
 $kind = in_array($d['t'] ?? '', ['pv', 'hb', 'ev'], true) ? $d['t'] : 'pv';
 $path = substr(preg_replace('/[?#].*$/', '', (string)($d['p'] ?? '/')) ?: '/', 0, 200);
 
