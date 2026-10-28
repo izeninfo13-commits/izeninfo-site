@@ -216,3 +216,49 @@ h1 em,h2 em{background:linear-gradient(120deg,#F3DFA2 0%,#C9A24E 35%,#F0D78C 55%
 .shot .bar{background:#111C33}
 .crumbs a:hover{color:var(--gold)}
 :focus-visible{outline-color:var(--gold)}
+
+/* ===== v4 : sphère de données, noir / violet / bleu ===== */
+@font-face{font-family:"Syne";font-weight:700;font-display:swap;src:url(/fonts/Syne-700.woff2) format("woff2")}
+@font-face{font-family:"Syne";font-weight:800;font-display:swap;src:url(/fonts/Syne-800.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:300;font-display:swap;src:url(/fonts/Manrope-300.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:400;font-display:swap;src:url(/fonts/Manrope-400.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:500;font-display:swap;src:url(/fonts/Manrope-500.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:600;font-display:swap;src:url(/fonts/Manrope-600.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:400;font-display:swap;src:url(/fonts/JetBrainsMono-400.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;font-display:swap;src:url(/fonts/JetBrainsMono-500.woff2) format("woff2")}
+:root{--paper:#05040A;--surface:#0E0B1E;--raise:#16112E;--card:rgba(13,10,28,.62);--ink:#EEEBFA;--muted:#ABA7C8;--dim:#8E8AAD;--line:rgba(150,135,255,.16);--line-2:rgba(150,135,255,.4);
+--accent:#9B86FF;--accent-hi:#C4B5FF;--violet:#7B5CFF;--blue:#3D7BFF;--cyan:#62D4FF;--gold:#62D4FF;
+--display:"Syne","Manrope",system-ui,sans-serif;--serif:"Syne","Manrope",system-ui,sans-serif;--body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;--r:14px}
+html,body{background:#05040A}
+body{font:400 16.5px/1.7 var(--body)}
+#sphere{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.veil{background:linear-gradient(90deg,rgba(5,4,10,.62) 0%,rgba(5,4,10,.25) 45%,rgba(5,4,10,0) 70%)}
+h1,h2,h3{font-family:var(--display)}
+h1,h2{font-weight:700;letter-spacing:-.03em}
+.hero h1{font-weight:800;font-size:clamp(32px,4.4vw,62px);line-height:1.04;max-width:17ch}
+section h2{font-size:clamp(28px,3.2vw,44px)}
+h1 em,h2 em{font-style:normal;background:linear-gradient(100deg,#C4B5FF 0%,#7B5CFF 38%,#3D7BFF 72%,#62D4FF 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+h3,section h3{font:600 18.5px/1.3 var(--body);letter-spacing:-.005em}
+.top{background:rgba(5,4,10,.72);backdrop-filter:blur(18px) saturate(140%)}
+.top nav a:not(.btn){border-radius:999px;font:500 14px/1 var(--body)}
+.top nav a:not(.btn):hover{background:rgba(123,92,255,.14);color:#fff}
+.kicker{font:500 11.5px/1.4 "JetBrains Mono",monospace;letter-spacing:.16em;color:var(--cyan)}
+.kicker::before{width:8px;height:8px;border:0;border-radius:50%;transform:none;background:linear-gradient(100deg,#C4B5FF,#7B5CFF,#3D7BFF);box-shadow:0 0 12px rgba(123,92,255,.9)}
+.crumbs{font:400 12px/1.4 "JetBrains Mono",monospace}
+.crumbs a:hover{color:var(--cyan)}
+.btn{border-radius:999px;font:600 13px/1.2 var(--body);letter-spacing:.02em;text-transform:none;background:rgba(13,10,28,.55);backdrop-filter:blur(10px)}
+.btn:hover{border-color:var(--violet)}
+.btn.primary{background:linear-gradient(100deg,#7B5CFF,#3D7BFF);border-color:transparent;color:#fff;box-shadow:0 14px 44px -14px rgba(123,92,255,.9)}
+.btn.primary:hover{background:linear-gradient(100deg,#8C70FF,#4D88FF);border-color:transparent;color:#fff}
+.card,.split>.prose,.faq details,.cta-band{border-radius:var(--r)!important;border:1px solid transparent!important;background:linear-gradient(rgba(13,10,28,.62),rgba(13,10,28,.62)) padding-box,linear-gradient(140deg,rgba(123,92,255,.5),rgba(61,123,255,.08) 45%,rgba(98,212,255,.32)) border-box!important;backdrop-filter:blur(16px) saturate(130%)}
+.card::before{display:none}
+.card .num{font:500 12px/1 "JetBrains Mono",monospace;color:var(--cyan)}
+.checks li::before{background:var(--cyan)}
+.shot{border-radius:12px;border-color:var(--line-2)}
+.shot .bar{background:#120E26}
+.links a{border-radius:999px!important;background:rgba(13,10,28,.55)}
+.links a:hover{border-color:var(--violet)}
+table.data td:last-child{color:var(--ink)!important}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+@media (max-width:960px){.veil{background:linear-gradient(180deg,rgba(5,4,10,.15),rgba(5,4,10,.55))}}
+.top .btn{text-transform:none;letter-spacing:.02em;font:600 13px/1 var(--body)}
