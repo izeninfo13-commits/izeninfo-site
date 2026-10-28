@@ -229,7 +229,24 @@ if ($a === 'stats') {
         ];
     }
 
+    /* Accès directs : indice le plus probable pour chaque arrivée sans provenance.
+       Données antérieures au détail : déduites de la page d'arrivée et du pays. */
+    $DX = "COALESCE(dx, CASE WHEN country='Non mesuré' THEN 'Historique importé (journaux du serveur)'
+        WHEN country='Autre' AND city IS NULL THEN 'Robot probable (hors zone, avant filtrage)'
+        WHEN path IN ('/','/index.html','/index.php') THEN 'Adresse tapée, favori ou QR code'
+        ELSE 'Lien partagé (messagerie, e-mail, PDF…) ou favori' END)";
+    $DW = "kind='pv' AND ($CH)='Accès direct' AND (source='Accès direct' OR dx IS NOT NULL)";
+    $dTot = (int)$db->query("SELECT COUNT(DISTINCT site_id||day||vid) FROM hits WHERE $IN AND ts>=$from AND $DW")->fetchColumn();
+    $direct = $dTot ? [
+        'total' => $dTot,
+        'kinds' => $top($DX, $DW, 8, $visits),
+        'pages' => $top($sc['all'] ? "(SELECT domain FROM sites WHERE id=hits.site_id)||path" : 'path', $DW, 6, $visits),
+        'devices' => $top('device', $DW, 3, $visits),
+        'hours' => $top("CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER)", $DW, 24, $visits),
+    ] : null;
+
     $out = [
+        'direct' => $direct,
         'channels' => $channels, 'cities' => $cities, 'unknown_city' => $unknownCity, 'ads' => $ads,
         'site' => $sc['site'], 'all' => $sc['all'],
         'range' => $range, 'bucket' => $bucket, 'kpi' => $cur, 'prev' => $prev, 'series' => $series,

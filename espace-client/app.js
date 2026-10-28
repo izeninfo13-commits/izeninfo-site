@@ -203,6 +203,7 @@
     const visits = d.devices.reduce((a, r) => a + r.n, 0);
     bars("lSources", d.sources, false, "Aucune visite sur la période");
     renderChannels(d);
+    renderDirect(d);
     const cityVisits = d.cities.reduce((a, r) => a + r.n, 0) + (d.unknown_city || 0);
     bars("lCities", d.cities, cityVisits, "Aucune ville identifiée pour le moment");
     $("citiesSub").textContent = "Ville approximative des visiteurs (visites)" + (d.unknown_city ? ` · ${nf.format(d.unknown_city)} visite${d.unknown_city > 1 ? "s" : ""} hors zone ou non identifiée${d.unknown_city > 1 ? "s" : ""}` : "");
@@ -215,7 +216,8 @@
   }
 
   const CH_COLORS = { "Google Ads (payant)": "#3987e5", "Google (naturel)": "#5FC58A", "Fiche Google (Maps)": "#E8B44A", "Accès direct": "#8D9AB3",
-    "Réseaux sociaux": "#C08CF0", "Autres moteurs": "#4FC3C9", "Sites référents": "#d95926", "E-mail": "#F08CB4", "Autres publicités": "#7FA8F0", "Campagnes (UTM)": "#B7C7A0", "Non attribué": "#5A6680" };
+    "Réseaux sociaux": "#C08CF0", "Autres moteurs": "#4FC3C9", "Sites référents": "#d95926", "E-mail": "#F08CB4", "Autres publicités": "#7FA8F0", "Campagnes (UTM)": "#B7C7A0", "Non attribué": "#5A6680",
+    "Messageries": "#6FD3A8", "QR code / imprimés": "#F2D06B" };
   const pctFmt = v => String(v).replace(".", ",") + " %";
   function renderChannels(d) {
     const rows = d.channels || [];
@@ -229,6 +231,33 @@
         <td class="rate ${r.visits >= 5 && rate === best && best > 0 ? "best" : ""}">${r.visits ? pctFmt(Math.round(rate * 1000) / 10) : "–"}</td></tr>`;
     }).join("") : `<tr><td class="txt" colspan="5">Aucune visite sur la période</td></tr>`;
   }
+
+  function renderDirect(d) {
+    const D = d.direct, box = $("directBox");
+    linkSite = d.all ? null : d.site; buildLink();
+    box.hidden = !D;
+    if (!D) return;
+    $("directSub").textContent = `${nf.format(D.total)} visite${D.total > 1 ? "s" : ""} sans provenance transmise par le navigateur sur la période. Pour chacune, l'indice le plus probable :`;
+    bars("lDirectKinds", D.kinds, D.total, "Aucune donnée");
+    bars("lDirectPages", D.pages, D.total, "Aucune donnée");
+    bars("lDirectDevices", D.devices, D.total, "Aucune donnée");
+  }
+
+  /* Générateur de lien suivi */
+  const LK = { qr: ["qr", "qrcode"], whatsapp: ["whatsapp", "messagerie"], email: ["email", "email"], gbp: ["google", "gbp"], social: ["instagram", "social"] };
+  let linkSite = null;
+  function buildLink() {
+    const dom = linkSite && linkSite.domain ? linkSite.domain : location.host;
+    const [src, med] = LK[$("lkMedium").value] || LK.qr;
+    const camp = ($("lkCamp").value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    $("lkOut").value = `https://${dom}/?utm_source=${src}&utm_medium=${med}${camp ? "&utm_campaign=" + camp : ""}`;
+  }
+  ["lkMedium", "lkCamp"].forEach(id => $(id).addEventListener("input", buildLink));
+  $("lkCopy").addEventListener("click", async () => {
+    buildLink();
+    try { await navigator.clipboard.writeText($("lkOut").value); $("lkCopy").textContent = "Copié"; } catch (e) { $("lkOut").select(); }
+    setTimeout(() => { $("lkCopy").textContent = "Copier"; }, 1500);
+  });
 
   const euro = v => v == null ? "–" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: v < 10 ? 2 : 0 }).format(v);
   function renderAds(d) {

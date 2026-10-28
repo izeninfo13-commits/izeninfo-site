@@ -229,3 +229,20 @@ table.chan .best{color:#9BE29B}
   table.chan th{font-size:10px;letter-spacing:.03em}
   table.chan .dot{margin-right:5px}
 }
+
+.direct{margin-top:28px;padding-top:24px;border-top:1px solid var(--line)}
+.direct .sub{margin:0 0 16px}
+.direct-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr);gap:28px;align-items:start}
+@media (max-width:900px){.direct-grid{grid-template-columns:minmax(0,1fr)}}
+.h4{font-size:12.5px;font-weight:600;color:var(--dim);margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em}
+.tracked{margin-top:22px;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.tracked summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--ink)}
+.tlink{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 16px;margin-top:14px}
+.tlink label{display:grid;gap:6px;font-size:13px;color:var(--dim);min-width:0}
+.tlink .full{grid-column:1/-1}
+.tlink select,.tlink input{width:100%;min-width:0;box-sizing:border-box;min-height:40px;padding:6px 10px;border-radius:4px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
+.tlink select:focus,.tlink input:focus{outline:none;border-color:var(--accent)}
+.lk-out{display:flex;gap:8px;min-width:0}.lk-out input{flex:1;font-family:ui-monospace,monospace;font-size:12.5px}
+@media (max-width:560px){.tlink{grid-template-columns:minmax(0,1fr)}}
+.tracked code{font-size:12px;padding:1px 5px;border-radius:4px;background:var(--line)}
+.tracked code{white-space:nowrap}

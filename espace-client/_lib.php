@@ -60,7 +60,7 @@ function izs_db(): PDO {
 
 /* Évolutions du schéma (colonnes ajoutées sans perte de données). */
 function izs_migrate(PDO $db): void {
-    $want = ['hits' => ['city' => 'TEXT', 'region' => 'TEXT', 'ch' => 'TEXT', 'camp' => 'TEXT'],
+    $want = ['hits' => ['city' => 'TEXT', 'region' => 'TEXT', 'ch' => 'TEXT', 'camp' => 'TEXT', 'dx' => 'TEXT'],
              'live' => ['city' => 'TEXT', 'ch' => 'TEXT'],
              'sites' => ['ads_budget' => 'INTEGER']];
     foreach ($want as $t => $cols) {

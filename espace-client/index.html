@@ -8,7 +8,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 <style>.logo{gap:.55em!important;letter-spacing:0!important}.logo .wm{height:.95em;width:auto;display:block;overflow:visible}.logo .wm .a{fill:currentColor}.logo .wm .b{fill:var(--accent)}.e3{--s:2.05em;--c:currentColor;--k:var(--accent);width:var(--s);height:var(--s);display:inline-block;perspective:calc(var(--s)*6);flex:none}.e3 .r{position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;animation:e3spin 10s linear infinite}.e3 b{position:absolute;display:block;inset:20%;border:calc(var(--s)*.05) solid var(--c);border-radius:calc(var(--s)*.07)}.e3 .l1{transform:translateZ(calc(var(--s)*-.22))}.e3 .l3{transform:translateZ(calc(var(--s)*.22));border-color:var(--k);background:color-mix(in srgb,var(--k) 45%,transparent);animation:e3lift 3.2s ease-in-out infinite}@keyframes e3spin{from{transform:rotateX(58deg) rotateZ(0)}to{transform:rotateX(58deg) rotateZ(360deg)}}@keyframes e3lift{50%{transform:translateZ(calc(var(--s)*.34))}}@media (prefers-reduced-motion:reduce){.e3 .r,.e3 b{animation:none!important}.e3 .r{transform:rotateX(58deg) rotateZ(45deg)}}@media (max-width:440px){.logo .wm{height:.72em!important}.logo .e3{--s:1.6em}}</style>
 <style>.logo{gap:.7em!important}.logo .izm{width:1.95em;height:1.95em;flex:none;overflow:visible;transform-origin:50% 50%;animation:iztilt 9s ease-in-out infinite alternate}.logo .wm{height:.7em;width:auto;display:block}@keyframes iztilt{from{transform:perspective(320px) rotateY(-18deg)}to{transform:perspective(320px) rotateY(18deg)}}@media (prefers-reduced-motion:reduce){.logo .izm{animation:none}.shine{display:none}}@media (max-width:440px){.logo .wm{height:.5em!important}.logo .izm{width:1.7em;height:1.7em}}</style>
 </head>
@@ -110,6 +110,32 @@
         <div class="table-x"><table class="data chan"><thead><tr><th class="txt">Canal</th><th>Visites</th><th>Part</th><th>Contacts</th><th>Taux de contact</th></tr></thead><tbody id="chanBody"></tbody></table></div>
         <div><h3 class="h3">Sources détaillées</h3><ul class="bars" id="lSources"></ul></div>
       </div>
+      <div class="direct" id="directBox" hidden>
+        <h3 class="h3">D'où viennent les accès directs ?</h3>
+        <p class="sub" id="directSub">Un accès direct est une arrivée sans aucune provenance transmise par le navigateur. Voici l'indice le plus probable pour chacune.</p>
+        <div class="direct-grid">
+          <div><h4 class="h4">Indice le plus probable</h4><ul class="bars" id="lDirectKinds"></ul></div>
+          <div><h4 class="h4">Pages d'arrivée</h4><ul class="bars" id="lDirectPages"></ul></div>
+          <div><h4 class="h4">Appareils</h4><ul class="bars" id="lDirectDevices"></ul></div>
+        </div>
+        <details class="tracked">
+          <summary>Réduire les accès directs : créer un lien suivi (QR code, WhatsApp, e-mail, fiche Google…)</summary>
+          <form class="tlink" id="fLink" novalidate>
+            <label>Support
+              <select id="lkMedium">
+                <option value="qr">QR code / imprimé (flyer, carte, vitrine, véhicule)</option>
+                <option value="whatsapp">WhatsApp / SMS / messagerie</option>
+                <option value="email">E-mail / signature / newsletter</option>
+                <option value="gbp">Fiche Google (bouton « Site Web »)</option>
+                <option value="social">Bio Instagram / Facebook / TikTok</option>
+              </select>
+            </label>
+            <label>Nom de la campagne (facultatif)<input id="lkCamp" placeholder="ex. flyer-salon-2026" maxlength="60"></label>
+            <label class="full">Lien à utiliser<span class="lk-out"><input id="lkOut" readonly><button class="btn sm" type="button" id="lkCopy">Copier</button></span></label>
+          </form>
+          <p class="note">Utilisez ce lien à la place de l'adresse simple : les visites qu'il amène seront classées dans le bon canal au lieu de « Accès direct ». Pour exclure vos propres visites, ouvrez une fois votre site avec <code>?izs=moi</code> à la fin de l'adresse, sur chaque appareil (<code>?izs=compter</code> pour annuler).</p>
+        </details>
+      </div>
     </section>
 
     <section class="card mt ads" id="adsCard" hidden aria-labelledby="hAds">
@@ -185,6 +211,6 @@
   </form>
 </dialog>
 
-<script src="app.js?v=4" defer></script>
+<script src="app.js?v=5" defer></script>
 </body>
 </html>
