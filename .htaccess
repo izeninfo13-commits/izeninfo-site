@@ -11,6 +11,14 @@ RewriteEngine On
 RewriteCond %{HTTPS} off [OR]
 RewriteCond %{HTTP_HOST} ^www\. [NC]
 RewriteRule ^ https://izeninfo.fr%{REQUEST_URI} [L,R=301]
+# Anciennes adresses (ancien site) encore visitées et connues de Google
+RewriteRule ^marseille/?$ https://izeninfo.fr/creation-site-internet-marseille/ [L,R=301]
+RewriteRule ^(bayonne|legal|mentions-legales)/?$ https://izeninfo.fr/ [L,R=301]
+RewriteRule ^(contact|services|tarifs|realisations)/?$ https://izeninfo.fr/#$1 [L,R=301,NE]
+RewriteRule ^portfolio/?$ https://izeninfo.fr/#realisations [L,R=301,NE]
+# Page d'accueil en double
+RewriteCond %{THE_REQUEST} \s/index\.html[\s?] [NC]
+RewriteRule ^index\.html$ https://izeninfo.fr/ [L,R=301]
 # Dossiers sans barre finale : redirection propre (sans :443)
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteCond %{REQUEST_URI} !/$
@@ -27,6 +35,9 @@ Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains
 Header set Cache-Control "public, max-age=31536000, immutable"
 </FilesMatch>
 <FilesMatch "\.(css|js)$">
+Header set Cache-Control "public, max-age=86400"
+</FilesMatch>
+<FilesMatch "^i18n\.json$">
 Header set Cache-Control "public, max-age=86400"
 </FilesMatch>
 <FilesMatch "\.(xml|txt)$">
