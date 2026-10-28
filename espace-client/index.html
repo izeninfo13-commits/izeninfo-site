@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#05040A">
 <title>Espace client · IZENINFO</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
-<link rel="stylesheet" href="app.css?v=9">
+<link rel="stylesheet" href="app.css?v=10">
 <script defer src="/sphere.js"></script>
 <style>.logo{gap:.7em!important}.logo .izm{width:1.95em;height:1.95em;flex:none;overflow:visible;transform-origin:50% 50%;animation:iztilt 9s ease-in-out infinite alternate}.logo .wm{height:.7em;width:auto;display:block}@keyframes iztilt{from{transform:perspective(320px) rotateY(-18deg)}to{transform:perspective(320px) rotateY(18deg)}}@media (prefers-reduced-motion:reduce){.logo .izm{animation:none}.shine{display:none}}@media (max-width:440px){.logo .wm{height:.5em!important}.logo .izm{width:1.7em;height:1.7em}}</style>
 </head>
@@ -89,6 +89,20 @@
       <div class="chart" id="chart"></div>
       <button type="button" class="linkish" id="bTable" aria-expanded="false" aria-controls="tableWrap">Afficher le tableau</button>
       <div class="table-scroll" id="tableWrap" hidden></div>
+    </section>
+
+    <section data-shape="0" data-side="center" data-dim=".25" class="card mt map-card" aria-labelledby="hMap">
+      <div class="card-head">
+        <div><h2 id="hMap">Carte des connexions</h2><p class="sub" id="mapSub">Visiteurs en France : ville approximative de chaque visite, en direct et sur la période</p></div>
+        <div class="legend map-legend" aria-hidden="true"><span><i class="lg-halo"></i>Visites sur la période</span><span><i class="lg-live"></i>En ligne maintenant</span><span><i class="lg-arc"></i>Vers votre zone principale</span></div>
+      </div>
+      <div class="globe" id="globe">
+        <canvas aria-label="Globe interactif des connexions : faites-le tourner pour explorer" role="img"></canvas>
+        <div class="gtip" hidden></div>
+        <div class="gctl"><button type="button" data-gz="in" aria-label="Zoomer">+</button><button type="button" data-gz="out" aria-label="Dézoomer">−</button><button type="button" data-gz="home" aria-label="Recentrer sur la France">◎</button></div>
+        <p class="gnogl">La carte nécessite WebGL, indisponible sur ce navigateur.</p>
+      </div>
+      <div class="gstats" id="gStats"></div>
     </section>
 
     <section data-shape="2" data-dim=".4" class="card mt" id="compare" hidden aria-labelledby="hCompare">
@@ -210,6 +224,7 @@
   </form>
 </dialog>
 
-<script src="app.js?v=5" defer></script>
+<script defer src="globe.js?v=5"></script>
+<script src="app.js?v=7" defer></script>
 </body>
 </html>

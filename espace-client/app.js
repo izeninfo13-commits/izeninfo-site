@@ -135,6 +135,7 @@
       const lc = $("liveCities"), cs = (l.cities || []).filter(c => c.n);
       lc.hidden = !cs.length;
       setText("liveCities", cs.length ? `<b>Villes en direct</b>` + cs.slice(0, 6).map(c => `<span class="chip">${esc(c.name)} <i>${c.n}</i></span>`).join("") : "", true);
+      state.liveGeo = l.geo || []; mapSync();
       if (state.rev !== null && l.rev !== state.rev) loadStats(true);
       state.rev = l.rev; state.lastSync = Date.now(); state.fails = 0;
     } catch (e) { state.fails++; }
@@ -208,11 +209,25 @@
     bars("lCities", d.cities, cityVisits, "Aucune ville identifiée pour le moment");
     $("citiesSub").textContent = "Ville approximative des visiteurs (visites)" + (d.unknown_city ? ` · ${nf.format(d.unknown_city)} visite${d.unknown_city > 1 ? "s" : ""} hors zone ou non identifiée${d.unknown_city > 1 ? "s" : ""}` : "");
     renderAds(d);
+    state.periodGeo = d.geo || []; mapSync();
     bars("lPages", d.pages, false, "Aucune page vue sur la période");
     bars("lDevices", d.devices, visits, "Aucune donnée");
     bars("lCountries", d.countries, visits, "Aucune donnée");
     bars("lBrowsers", d.browsers, visits, "Aucune donnée");
     setText("eTel", nf.format(d.events.tel)); setText("eMail", nf.format(d.events.mail)); setText("eForm", nf.format(d.events.form));
+  }
+
+  /* Carte des connexions (globe WebGL, globe.js) */
+  function mapSync() {
+    if (!state.globe && window.IZGlobe) state.globe = IZGlobe.create($("globe")) || false;
+    if (state.globe) { state.globe.setPeriod(state.periodGeo || []); state.globe.setLive(state.liveGeo || []); }
+    const P = state.periodGeo || [], L = state.liveGeo || [];
+    const on = L.reduce((a, c) => a + c.n, 0), tot = P.reduce((a, c) => a + c.n, 0);
+    $("gStats").innerHTML = P.length || on
+      ? `<span><b>${nf.format(tot)}</b> visite${tot > 1 ? "s" : ""} en France</span><span><b>${nf.format(P.length)}</b> ville${P.length > 1 ? "s" : ""}</span>` +
+        (P[0] ? `<span>Zone principale : <b>${esc(P[0].name)}</b></span>` : "") +
+        `<span class="${on ? "on" : ""}"><b>${nf.format(on)}</b> en ligne localisé${on > 1 ? "s" : ""}</span>`
+      : `<span>Aucune visite localisée en France sur la période pour le moment.</span>`;
   }
 
   const CH_COLORS = { "Google Ads (payant)": "#3987e5", "Google (naturel)": "#5FC58A", "Fiche Google (Maps)": "#E8B44A", "Accès direct": "#8D9AB3",

@@ -102,7 +102,10 @@ if ($a === 'live') {
     $rev = (int)$db->query("SELECT COALESCE(MAX(id),0) FROM hits WHERE $IN")->fetchColumn();
     $cities = $db->query("SELECT COALESCE(city,'Ville non identifiée') AS name, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC, name LIMIT 8")->fetchAll();
     $chans = $db->query("SELECT COALESCE(ch,'Accès direct') AS name, COUNT(*) n FROM live WHERE $IN AND ts>=$since GROUP BY 1 ORDER BY n DESC LIMIT 6")->fetchAll();
-    izs_json(['count' => $count, 'pages' => $pages, 'cities' => $cities, 'channels' => $chans, 'rev' => $rev, 'at' => time()]);
+    /* Carte : position approximative des visiteurs en ligne (ville, jamais l'adresse IP). */
+    $geo = izs_coords($db->query("SELECT city, (SELECT h.region FROM hits h WHERE h.site_id=live.site_id AND h.vid=live.vid AND h.region IS NOT NULL ORDER BY h.ts DESC LIMIT 1) AS region,
+        COUNT(*) n FROM live WHERE $IN AND ts>=$since AND city IS NOT NULL GROUP BY 1, 2 ORDER BY n DESC LIMIT 60")->fetchAll(), 'FR');
+    izs_json(['count' => $count, 'pages' => $pages, 'cities' => $cities, 'channels' => $chans, 'geo' => $geo, 'rev' => $rev, 'at' => time()]);
 }
 
 if ($a === 'stats') {
@@ -186,6 +189,9 @@ if ($a === 'stats') {
 
     $cityCol = "city||CASE WHEN region IS NOT NULL AND region<>'' THEN ' · '||region ELSE '' END";
     $cities = $top($cityCol, "kind='pv' AND city IS NOT NULL", 12, $visits);
+    $st = $db->prepare("SELECT city, region, $visits AS n FROM hits WHERE $IN AND ts>=? AND kind='pv' AND city IS NOT NULL GROUP BY city, region ORDER BY n DESC LIMIT 250");
+    $st->execute([$from]);
+    $geo = izs_coords($st->fetchAll(), 'FR'); /* carte ciblée sur la France */
     $unknownCity = (int)$db->query("SELECT COUNT(DISTINCT site_id||day||vid) FROM hits WHERE $IN AND ts>=$from AND kind='pv' AND city IS NULL")->fetchColumn();
 
     /* Google Ads : visites payantes, contacts obtenus, coût si le budget est renseigné */
@@ -247,7 +253,7 @@ if ($a === 'stats') {
 
     $out = [
         'direct' => $direct,
-        'channels' => $channels, 'cities' => $cities, 'unknown_city' => $unknownCity, 'ads' => $ads,
+        'channels' => $channels, 'cities' => $cities, 'geo' => $geo, 'unknown_city' => $unknownCity, 'ads' => $ads,
         'site' => $sc['site'], 'all' => $sc['all'],
         'range' => $range, 'bucket' => $bucket, 'kpi' => $cur, 'prev' => $prev, 'series' => $series,
         'sources' => $top('source', "kind='pv' AND source IS NOT NULL", 8, $visits),

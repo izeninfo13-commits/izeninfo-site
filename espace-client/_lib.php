@@ -72,7 +72,7 @@ function izs_migrate(PDO $db): void {
 
 /* Ville approximative déduite de l'adresse IP au moment de la visite (base DB-IP Lite, CC BY 4.0).
    L'adresse IP n'est ni stockée ni transmise à un tiers : seule la ville est conservée. */
-function izs_geo(string $ip): ?array {
+function izs_geo_db(): ?PDO {
     static $g = false;
     if ($g === false) {
         /* La base est livrée compressée ; elle est décompressée une fois dans le dossier des données. */
@@ -84,6 +84,11 @@ function izs_geo(string $ip): ?array {
         }
         $g = is_file($f) ? new PDO('sqlite:' . $f, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]) : null;
     }
+    return $g;
+}
+
+function izs_geo(string $ip): ?array {
+    $g = izs_geo_db();
     if (!$g) return null;
     $bin = @inet_pton($ip);
     if ($bin === false) return null;
@@ -101,6 +106,31 @@ function izs_geo(string $ip): ?array {
     }
     $st = $g->prepare('SELECT cc,region,city FROM p WHERE id=?'); $st->execute([(int)$r['p']]);
     return $st->fetch() ?: null;
+}
+
+/* Coordonnées approximatives (centre de la ville) pour la carte des connexions. */
+function izs_coords(array $rows, ?string $onlyCc = null): array {
+    $g = izs_geo_db();
+    if (!$g || !$rows) return [];
+    static $idx = false;
+    if (!$idx) { @$g->exec('CREATE INDEX IF NOT EXISTS p_city ON p(city)'); $idx = true; }
+    $a = $g->prepare('SELECT cc,lat,lon FROM p WHERE city=? AND region=? AND lat IS NOT NULL LIMIT 1');
+    $b = $g->prepare("SELECT cc,lat,lon FROM p WHERE city=? AND lat IS NOT NULL ORDER BY cc='FR' DESC LIMIT 1");
+    $out = []; $merged = [];
+    foreach ($rows as $r) {
+        $city = (string)($r['city'] ?? ''); if ($city === '') continue;
+        $region = (string)($r['region'] ?? '');
+        $c = null;
+        if ($region !== '') { $a->execute([$city, $region]); $c = $a->fetch(); }
+        if (!$c) { $b->execute([$city]); $c = $b->fetch(); }
+        if (!$c || ($onlyCc && $c['cc'] !== $onlyCc)) continue;
+        $k = $c['lat'] . ',' . $c['lon'];
+        if (isset($merged[$k])) { $out[$merged[$k]]['n'] += (int)$r['n']; continue; }
+        $merged[$k] = count($out);
+        $out[] = ['name' => $city . ($region !== '' && $region !== $city ? ' · ' . $region : ''), 'cc' => $c['cc'],
+                  'lat' => round((float)$c['lat'], 3), 'lon' => round((float)$c['lon'], 3), 'n' => (int)$r['n']];
+    }
+    return $out;
 }
 
 /* Sel quotidien : les visiteurs ne sont pas suivis d'un jour à l'autre et aucune IP n'est stockée. */

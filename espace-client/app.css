@@ -309,3 +309,25 @@ table.data th{font-family:var(--mono)}
 .tracked{border-radius:12px;background:rgba(13,10,28,.5)}
 .legal,dialog{border-radius:14px}
 @media (prefers-reduced-motion:reduce){.live .dot{animation:none}}
+
+/* ===== Carte des connexions : globe WebGL ===== */
+.map-card{overflow:hidden}
+.map-legend .lg-halo{width:10px;height:10px;border-radius:50%;background:radial-gradient(circle,#9be6ff 0 30%,rgba(123,92,255,.55) 60%,transparent 72%)}
+.map-legend .lg-live{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(98,212,255,.9),0 0 10px rgba(98,212,255,.9)}
+.map-legend .lg-arc{width:18px;height:2px;background:linear-gradient(90deg,#8C74FF,#62D4FF)}
+.globe{position:relative;height:clamp(340px,52vw,560px);margin:4px -8px 0;border-radius:12px;background:radial-gradient(60% 60% at 50% 50%,rgba(61,40,160,.18),transparent 70%)}
+.globe canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:pan-y}
+.globe canvas.grab{cursor:grabbing}
+.gtip{position:absolute;left:0;top:0;pointer-events:none;z-index:2;margin:-14px 0 0;translate:-50% -100%;display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  background:rgba(12,9,28,.92);border:1px solid rgba(150,135,255,.35);box-shadow:0 12px 40px -12px rgba(123,92,255,.8);font-size:12.5px;color:var(--muted);white-space:nowrap}
+.gtip b{color:var(--ink);font-size:13.5px;font-weight:600}
+.gtip .on{color:#62D4FF}
+.gctl{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.gctl button{width:36px;height:36px;border-radius:999px;border:1px solid rgba(150,135,255,.3);background:rgba(13,10,28,.7);color:var(--ink);font:500 17px/1 var(--body);cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.gctl button:hover{border-color:#7B5CFF;background:rgba(123,92,255,.2)}
+.gnogl{display:none;position:absolute;inset:0;margin:0;place-items:center;text-align:center;color:var(--dim);font-size:14px}
+.globe.nogl .gnogl{display:grid}.globe.nogl canvas,.globe.nogl .gctl{display:none}
+.gstats{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;font-size:13px;color:var(--muted)}
+.gstats b{color:var(--ink);font-weight:600}
+.gstats .on b{color:#62D4FF}
+@media (max-width:640px){.globe{height:clamp(300px,92vw,420px);margin:4px -6px 0}.map-legend{gap:10px}}
