@@ -246,3 +246,16 @@ table.chan .best{color:#9BE29B}
 @media (max-width:560px){.tlink{grid-template-columns:minmax(0,1fr)}}
 .tracked code{font-size:12px;padding:1px 5px;border-radius:4px;background:var(--line)}
 .tracked code{white-space:nowrap}
+
+/* ===== Direction « Noir & platine » ===== */
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/CormorantGaramond-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/CormorantGaramond-500-normal.woff2) format("woff2")}
+:root{--paper:#0B0B0C;--surface:#111113;--raise:#17171A;--sunk:#0E0E10;--ink:#EDE9E1;--muted:#BDB8AF;--dim:#948F86;
+--line:rgba(237,233,225,.12);--line-2:rgba(237,233,225,.24);--accent:#D9DEE5;--accent-2:#EDE9E1;--display:"Cormorant Garamond",Garamond,serif}
+h1,h2,h3{font-family:var(--display);font-weight:500;font-stretch:normal;letter-spacing:0}
+:focus-visible{outline:1px solid var(--ink);border-radius:0}
+.btn{border-radius:0;letter-spacing:.04em}
+.btn.primary{background:#EDE9E1;border-color:#EDE9E1;color:#0B0B0C}
+.btn.primary:hover{background:#FFFFFF;border-color:#FFFFFF;color:#0B0B0C}
+.auth{background:radial-gradient(60% 50% at 50% 0%,rgba(185,193,204,.10),transparent 70%)}
+.auth-card{border-radius:0;min-height:420px}
