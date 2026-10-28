@@ -198,3 +198,21 @@ h3,section h3{font-family:var(--body);font-weight:400;font-size:19px;letter-spac
 .foot{position:relative;z-index:1}
 @media (max-width:820px){.top nav a:not(.btn){display:none}}
 @media (max-width:1000px){.top nav a:not(.btn){display:none}}
+
+/* ===== Palette bleu mat, doré, noir ===== */
+:root{--paper:#06070A;--surface:#0F1830;--raise:#13203B;--card:rgba(19,30,52,.80);--ink:#EEE8DC;--muted:#AEB7C8;--dim:#8D97AB;--line:rgba(201,162,78,.16);--line-2:rgba(201,162,78,.38);--accent:#C9A24E;--accent-hi:#F0D78C;--gold:#C9A24E}
+html,body{background:#06070A}
+.veil{background:radial-gradient(90% 70% at 50% 45%,transparent 0%,rgba(6,7,10,.2) 70%,rgba(6,7,10,.6) 100%)}
+.top{background:rgba(6,7,10,.88)}
+.top nav a:not(.btn):hover{background:rgba(19,30,52,.9)}
+.kicker{color:var(--gold)}.kicker::before{border-color:var(--gold)}
+h1 em,h2 em{background:linear-gradient(120deg,#F3DFA2 0%,#C9A24E 35%,#F0D78C 55%,#9C7630 80%,#E2C27A 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.card::before{background:linear-gradient(120deg,#F3DFA2,#C9A24E 35%,#F0D78C 55%,#9C7630 80%,#E2C27A)}
+.card .num{color:var(--gold)}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:linear-gradient(120deg,#E8CD84,#C9A24E 55%,#B08A3E);border-color:#C9A24E;color:#06070A}
+.btn.primary:hover{background:#F0D78C;border-color:#F0D78C;color:#06070A}
+.checks li::before{background:var(--gold)}
+.shot .bar{background:#111C33}
+.crumbs a:hover{color:var(--gold)}
+:focus-visible{outline-color:var(--gold)}
