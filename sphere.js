@@ -87,8 +87,9 @@ void main(){vec2 u=gl_PointCoord-0.5;float r=dot(u,u);if(r>0.25)discard;float k=
     target = n; mt = reduce ? 1 : 0;
   };
   /* Forme et position selon la section la plus visible : data-shape="0..4", data-side="right|center", data-dim="0..1" */
-  const secs = [...document.querySelectorAll("[data-shape]")];
+  let secs = [...document.querySelectorAll("[data-shape]")];
   const pick = () => {
+    if (!secs.length) secs = [...document.querySelectorAll("[data-shape]")];
     let best = null, bv = 0;
     for (const s of secs) { const r = s.getBoundingClientRect(), v = Math.max(0, Math.min(r.bottom, H) - Math.max(r.top, 0)); if (v > bv) { bv = v; best = s; } }
     if (!best) return;
@@ -98,6 +99,8 @@ void main(){vec2 u=gl_PointCoord-0.5;float r=dot(u,u);if(r>0.25)discard;float k=
     if (reduce) { mt = 1; ox = oxT; alpha = alphaT; draw(); }
   };
   addEventListener("scroll", pick, { passive: true }); addEventListener("resize", pick);
+  /* Vues qui s'affichent sans défilement (espace client) : on revérifie régulièrement */
+  setInterval(() => { if (!document.hidden) pick(); }, 1200);
 
   const draw = () => {
     const asp = W / H, z = W < 700 ? -10 : -7.6;
