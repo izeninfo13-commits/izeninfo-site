@@ -6,6 +6,15 @@
   var key = s.getAttribute("data-site"); if (!key) return;
   if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return;
   if (/^(localhost|127\.|192\.168\.)/.test(location.hostname)) return;
+  /* Robots pilotés (navigateurs automatisés) : jamais comptés */
+  if (navigator.webdriver) return;
+  /* Exclure ses propres visites : ouvrir le site une fois avec ?izs=moi (et ?izs=compter pour annuler) */
+  try {
+    var opt = new URLSearchParams(location.search).get("izs");
+    if (opt === "moi") localStorage.setItem("izs_off", "1");
+    else if (opt === "compter") localStorage.removeItem("izs_off");
+    if (localStorage.getItem("izs_off") === "1") return;
+  } catch (e) {}
   var endpoint = (s.getAttribute("data-api") || new URL(s.src).origin) + "/stats/collect.php";
   var tz = ""; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
 
@@ -27,8 +36,16 @@
     var q = new URLSearchParams(location.search), m = {};
     /* Paramètres de campagne : publicités Google (gclid, gbraid, wbraid, gad_source), Microsoft, Facebook, UTM */
     [["gclid", "gclid"], ["gbraid", "gbraid"], ["wbraid", "wbraid"], ["gad", "gad_source"], ["msclkid", "msclkid"], ["fbclid", "fbclid"],
-     ["us", "utm_source"], ["um", "utm_medium"], ["uc", "utm_campaign"]].forEach(function (k) { var v = q.get(k[1]); if (v) m[k[0]] = k[0] === "gclid" || k[0] === "gbraid" || k[0] === "wbraid" || k[0] === "msclkid" || k[0] === "fbclid" ? "1" : v.slice(0, 80); });
-    send({ t: "pv", p: p, r: ref, i: internal, u: q.get("utm_source") || q.get("ref") || "", q: m, w: window.innerWidth, z: tz });
+     ["us", "utm_source"], ["um", "utm_medium"], ["uc", "utm_campaign"],
+     /* Autres marqueurs posés par les plateformes : Google Shopping, TikTok, LinkedIn, X, partages Instagram, e-mailings */
+     ["srs", "srsltid"], ["tt", "ttclid"], ["li", "li_fat_id"], ["tw", "twclid"], ["ig", "igshid"], ["mc", "mc_cid"], ["hs", "_hsenc"]].forEach(function (k) {
+      var v = q.get(k[1]); if (v) m[k[0]] = /^(us|um|uc)$/.test(k[0]) ? v.slice(0, 80) : "1"; });
+    if (!m.ig && q.get("igsh")) m.ig = "1";
+    /* Indices pour les arrivées sans provenance : type de navigation, application installée, onglet neuf */
+    var nav = ""; try { var ne = performance.getEntriesByType("navigation")[0]; nav = ne ? ne.type : ""; } catch (e) {}
+    var app = 0; try { app = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone ? 1 : 0; } catch (e) {}
+    send({ t: "pv", p: p, r: ref, i: internal, u: q.get("utm_source") || q.get("ref") || "", q: m, w: window.innerWidth, z: tz,
+           n: sent ? "" : nav, a: app });
     sent = true;
   }
   var sent = false;
