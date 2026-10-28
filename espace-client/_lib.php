@@ -62,12 +62,19 @@ function izs_db(): PDO {
 function izs_migrate(PDO $db): void {
     $want = ['hits' => ['city' => 'TEXT', 'region' => 'TEXT', 'ch' => 'TEXT', 'camp' => 'TEXT', 'dx' => 'TEXT'],
              'live' => ['city' => 'TEXT', 'ch' => 'TEXT'],
-             'sites' => ['ads_budget' => 'INTEGER']];
+             'sites' => ['ads_budget' => 'INTEGER', 'lead_value' => 'INTEGER']];
     foreach ($want as $t => $cols) {
         $have = array_column($db->query("PRAGMA table_info($t)")->fetchAll(), 'name');
         foreach ($cols as $c => $type) if (!in_array($c, $have, true)) $db->exec("ALTER TABLE $t ADD COLUMN $c $type");
     }
     $db->exec('CREATE INDEX IF NOT EXISTS hits_visit ON hits(site_id, day, vid)');
+    /* Engagement et vitesse : une ligne par page affichée (temps visible, lecture, Core Web Vitals, code HTTP). */
+    $db->exec('CREATE TABLE IF NOT EXISTS eng(
+        id INTEGER PRIMARY KEY, site_id INTEGER NOT NULL, pvid TEXT NOT NULL, ts INTEGER NOT NULL, day TEXT NOT NULL, vid TEXT NOT NULL,
+        path TEXT, dur INTEGER, scroll INTEGER, lcp INTEGER, cls REAL, inp INTEGER, fcp INTEGER, ttfb INTEGER, status INTEGER, device TEXT,
+        UNIQUE(site_id, pvid))');
+    $db->exec('CREATE INDEX IF NOT EXISTS eng_site_ts ON eng(site_id, ts)');
+    $db->exec('CREATE INDEX IF NOT EXISTS eng_visit ON eng(site_id, day, vid)');
 }
 
 /* Ville approximative déduite de l'adresse IP au moment de la visite (base DB-IP Lite, CC BY 4.0).
@@ -181,6 +188,36 @@ function izs_csrf_ok(?string $t): bool { izs_session(); return is_string($t) && 
 
 function izs_has_users(): bool { return (int)izs_db()->query('SELECT COUNT(*) FROM users')->fetchColumn() > 0; }
 
+/* Export CSV (séparateur « ; » et virgule décimale, lisible directement dans Excel en français). */
+function izs_csv(array $o, string $type): void {
+    $pct = fn($a, $b) => $b ? round($a / $b * 100, 1) : 0;
+    $sets = [
+        'days' => [['Période', 'Visiteurs', 'Pages vues'], array_map(fn($r) => [$r['label'], $r['visitors'], $r['pageviews']], $o['series'] ?? [])],
+        'channels' => [['Canal', 'Visites', 'Pages vues', 'Contacts', 'Visiteurs ayant contacté', 'Taux de contact (%)'],
+            array_map(fn($r) => [$r['name'], $r['visits'], $r['pages'], $r['contacts'], $r['converted'], $pct($r['converted'], $r['visits'])], $o['channels'] ?? [])],
+        'sources' => [['Source', 'Visites'], array_map(fn($r) => [$r['name'], $r['n']], $o['sources'] ?? [])],
+        'pages' => [['Page', 'Vues', 'Temps moyen (s)', 'Lecture moyenne (%)', 'Taux de sortie (%)'],
+            array_map(fn($r) => [$r['name'], $r['views'], $r['time'], $r['scroll'], $r['exit']], $o['pages_eng'] ?? [])],
+        'entries' => [["Page d'entrée", 'Visites', 'Rebond (%)', 'Contacts', 'Taux de contact (%)'],
+            array_map(fn($r) => [$r['name'], $r['n'], $r['bounce'], $r['contacts'], $r['rate']], $o['entries'] ?? [])],
+        'cities' => [['Ville', 'Visites'], array_map(fn($r) => [$r['name'], $r['n']], $o['cities'] ?? [])],
+    ];
+    if (!isset($sets[$type])) $type = 'days';
+    [$head, $rows] = $sets[$type];
+    $names = ['days' => 'frequentation', 'channels' => 'canaux', 'sources' => 'sources', 'pages' => 'pages', 'entries' => 'pages-entree', 'cities' => 'villes'];
+    $slug = preg_replace('/[^a-z0-9.-]+/', '-', strtolower($o['site']['domain'] ?? 'tous-les-sites'));
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('Content-Disposition: attachment; filename="izeninfo-' . $slug . '-' . $names[$type] . '-' . ($o['range'] ?? '') . '-' . date('Y-m-d') . '.csv"');
+    $f = fopen('php://output', 'w');
+    fwrite($f, "\xEF\xBB\xBF");
+    $cell = fn($v) => is_float($v) ? str_replace('.', ',', (string)$v) : ($v ?? '');
+    fputcsv($f, $head, ';', '"', '');
+    foreach ($rows as $r) fputcsv($f, array_map($cell, $r), ';', '"', '');
+    fclose($f);
+    exit;
+}
+
 function izs_json($data, int $code = 200): void {
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
@@ -220,5 +257,6 @@ function izs_purge(): void {
     if (random_int(1, 500) !== 1) return;
     $db = izs_db();
     $db->prepare('DELETE FROM hits WHERE ts < ?')->execute([time() - 25 * 31 * 86400]);
+    $db->prepare('DELETE FROM eng WHERE ts < ?')->execute([time() - 25 * 31 * 86400]);
     $db->prepare('DELETE FROM live WHERE ts < ?')->execute([time() - 3600]);
 }

@@ -108,7 +108,7 @@ if ($a === 'live') {
     izs_json(['count' => $count, 'pages' => $pages, 'cities' => $cities, 'channels' => $chans, 'geo' => $geo, 'rev' => $rev, 'at' => time()]);
 }
 
-if ($a === 'stats') {
+if ($a === 'stats' || $a === 'csv') {
     $sc = izs_scope($u);
     $IN = 'site_id IN (' . implode(',', $sc['ids']) . ')';
     $range = in_array($_GET['range'] ?? '', ['today', '7d', '30d', '90d', '12m'], true) ? $_GET['range'] : '30d';
@@ -251,7 +251,110 @@ if ($a === 'stats') {
         'hours' => $top("CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER)", $DW, 24, $visits),
     ] : null;
 
+    /* ---------- Engagement réel : rebond, temps visible, lecture, pages d'entrée et de sortie ---------- */
+    $PREF = fn(string $t) => $sc['all'] ? "(SELECT domain FROM sites WHERE id=$t.site_id)||$t.path" : "$t.path";
+    $KEY = "(lower(path) LIKE '%contact%' OR lower(path) LIKE '%devis%' OR lower(path) LIKE '%tarif%' OR lower(path) LIKE '%prix%'
+        OR lower(path) LIKE '%reserv%' OR lower(path) LIKE '%réserv%' OR lower(path) LIKE '%rdv%' OR lower(path) LIKE '%rendez%' OR lower(path) LIKE '%booking%'
+        OR lower(path) LIKE '%commande%' OR lower(path) LIKE '%panier%' OR lower(path) LIKE '%cart%' OR lower(path) LIKE '%checkout%' OR lower(path) LIKE '%boutique%')";
+    $CTE = "v AS (SELECT site_id, day, vid, COUNT(*) pv, MIN(ts) t0, MAX(ts) t1, MAX(CASE WHEN $KEY THEN 1 ELSE 0 END) k
+                  FROM hits WHERE $IN AND ts>=:a AND ts<:b AND kind='pv' GROUP BY site_id, day, vid),
+            c AS (SELECT DISTINCT site_id, day, vid FROM hits WHERE $IN AND ts>=:a AND ts<:b AND kind='ev'),
+            e AS (SELECT site_id, day, vid, SUM(dur) d FROM eng WHERE $IN AND ts>=:a AND ts<:b + 3600 GROUP BY site_id, day, vid),
+            x AS (SELECT v.*, CASE WHEN c.vid IS NULL THEN 0 ELSE 1 END conv, e.d d, CASE WHEN e.vid IS NULL THEN 0 ELSE 1 END m,
+                  CASE WHEN c.vid IS NOT NULL OR v.pv>=2 OR e.d>=10000 THEN 1 ELSE 0 END en
+                  FROM v LEFT JOIN c ON c.site_id=v.site_id AND c.day=v.day AND c.vid=v.vid
+                         LEFT JOIN e ON e.site_id=v.site_id AND e.day=v.day AND e.vid=v.vid)";
+    $agg = function (int $a, int $b) use ($db, $CTE): array {
+        $st = $db->prepare("WITH $CTE SELECT COUNT(*) visits, COALESCE(SUM(pv=1 AND conv=0),0) bounces, COALESCE(SUM(m),0) measured,
+            COALESCE(SUM(CASE WHEN m=1 THEN d ELSE 0 END),0) dur, COALESCE(SUM(en),0) engaged, COALESCE(SUM(conv),0) converted,
+            COALESCE(SUM(en=1 AND (k=1 OR conv=1)),0) keyv FROM x");
+        $st->execute([':a' => $a, ':b' => $b]);
+        $r = array_map('intval', $st->fetch());
+        $r['bounce_rate'] = $r['visits'] ? round($r['bounces'] / $r['visits'] * 100, 1) : null;
+        $r['engaged_rate'] = $r['visits'] ? round($r['engaged'] / $r['visits'] * 100, 1) : null;
+        $r['conv_rate'] = $r['visits'] ? round($r['converted'] / $r['visits'] * 100, 2) : null;
+        $r['avg_time'] = $r['measured'] ? (int)round($r['dur'] / $r['measured'] / 1000) : null;
+        return $r;
+    };
+    $E = $agg($from, $now + 1); $Ep = $agg($pFrom, $pTo);
+    $st = $db->prepare("SELECT AVG(scroll) s, COUNT(*) n FROM eng WHERE $IN AND ts>=? AND scroll>0");
+    $st->execute([$from]); $sr = $st->fetch();
+    $E['scroll'] = $sr['n'] ? (int)round($sr['s']) : null;
+    $st = $db->prepare("SELECT AVG(scroll) s, COUNT(*) n FROM eng WHERE $IN AND ts>=? AND ts<? AND scroll>0");
+    $st->execute([$pFrom, $pTo]); $sr = $st->fetch();
+    $Ep['scroll'] = $sr['n'] ? (int)round($sr['s']) : null;
+    $since = $db->query("SELECT MIN(ts) FROM eng WHERE $IN")->fetchColumn();
+
+    $edge = function (string $which) use ($db, $CTE, $from, $now, $PREF): array {
+        $t = $which === 'entry' ? 'h.ts=x.t0 ORDER BY h.id' : 'h.ts=x.t1 ORDER BY h.id DESC';
+        $st = $db->prepare("WITH $CTE SELECT name, COUNT(*) n, SUM(pv=1 AND conv=0) b, SUM(conv) c, SUM(en) en FROM (
+            SELECT x.*, (SELECT {$PREF('h')} FROM hits h WHERE h.site_id=x.site_id AND h.day=x.day AND h.vid=x.vid AND h.kind='pv' AND $t LIMIT 1) name FROM x)
+            GROUP BY name ORDER BY n DESC LIMIT 25");
+        $st->execute([':a' => $from, ':b' => $now + 1]);
+        return array_map(fn($r) => ['name' => $r['name'], 'n' => (int)$r['n'], 'bounce' => $r['n'] ? round($r['b'] / $r['n'] * 100, 1) : 0,
+            'contacts' => (int)$r['c'], 'rate' => $r['n'] ? round($r['c'] / $r['n'] * 100, 1) : 0], $st->fetchAll());
+    };
+    $entries = $edge('entry'); $exits = $edge('exit');
+    $exitMap = []; foreach ($exits as $r) $exitMap[$r['name']] = $r['n'];
+    $st = $db->prepare("SELECT {$PREF('hits')} AS name, COUNT(*) n FROM hits WHERE $IN AND ts>=? AND kind='pv' GROUP BY 1 ORDER BY n DESC LIMIT 12");
+    $st->execute([$from]); $pv = $st->fetchAll();
+    $st = $db->prepare("SELECT {$PREF('eng')} AS name, AVG(NULLIF(dur,0)) t, AVG(NULLIF(scroll,0)) s, COUNT(*) n FROM eng WHERE $IN AND ts>=? GROUP BY 1");
+    $st->execute([$from]); $em = []; foreach ($st->fetchAll() as $r) $em[$r['name']] = $r;
+    $pagesEng = array_map(fn($r) => ['name' => $r['name'], 'views' => (int)$r['n'],
+        'time' => isset($em[$r['name']]) && $em[$r['name']]['t'] !== null ? (int)round($em[$r['name']]['t'] / 1000) : null,
+        'scroll' => isset($em[$r['name']]) && $em[$r['name']]['s'] !== null ? (int)round($em[$r['name']]['s']) : null,
+        'exit' => $r['n'] ? min(100, round(($exitMap[$r['name']] ?? 0) / $r['n'] * 100, 1)) : 0], $pv);
+
+    /* ---------- Entonnoir de contact et valeur estimée ---------- */
+    $leadValue = $sc['all'] ? null : ((int)$db->query('SELECT COALESCE(lead_value,0) FROM sites WHERE id=' . (int)$sc['ids'][0])->fetchColumn() ?: null);
+    $funnel = [
+        'steps' => [
+            ['name' => 'Visites', 'n' => $E['visits'], 'hint' => 'Toutes les visites de la période'],
+            ['name' => 'Visites engagées', 'n' => $E['engaged'], 'hint' => '2 pages ou plus, 10 s de lecture ou un contact'],
+            ['name' => 'Intérêt commercial', 'n' => $E['keyv'], 'hint' => 'Page contact, devis, tarifs, réservation ou boutique consultée (ou contact)'],
+            ['name' => 'Contact', 'n' => $E['converted'], 'hint' => 'Appel, e-mail ou formulaire envoyé'],
+        ],
+        'prev_converted' => $Ep['converted'], 'prev_visits' => $Ep['visits'],
+        'lead_value' => $leadValue,
+        'value' => $leadValue ? $E['converted'] * $leadValue : null,
+        'prev_value' => $leadValue ? $Ep['converted'] * $leadValue : null,
+    ];
+
+    /* ---------- Santé du site : Core Web Vitals mesurés chez les visiteurs, erreurs ---------- */
+    $TH = ['lcp' => [2500, 4000, 'ms'], 'inp' => [200, 500, 'ms'], 'cls' => [0.1, 0.25, ''], 'fcp' => [1800, 3000, 'ms'], 'ttfb' => [800, 1800, 'ms']];
+    $metric = function (string $col, string $extra = '') use ($db, $IN, $from, $TH): ?array {
+        [$g, $p] = $TH[$col];
+        $st = $db->prepare("SELECT COUNT($col) n, SUM($col<=$g) g, SUM($col>$g AND $col<=$p) ni, SUM($col>$p) po FROM eng WHERE $IN AND ts>=? AND $col IS NOT NULL $extra");
+        $st->execute([$from]); $r = $st->fetch();
+        $n = (int)$r['n']; if (!$n) return null;
+        $st = $db->prepare("SELECT $col FROM eng WHERE $IN AND ts>=? AND $col IS NOT NULL $extra ORDER BY $col LIMIT 1 OFFSET " . (int)floor(($n - 1) * .75));
+        $st->execute([$from]); $p75 = $st->fetchColumn() + 0;
+        return ['n' => $n, 'p75' => $p75, 'good' => round($r['g'] / $n * 100), 'ni' => round($r['ni'] / $n * 100), 'poor' => round($r['po'] / $n * 100)];
+    };
+    $score = function (?array $m, string $k) use ($TH): ?int {
+        if (!$m) return null; [$g, $p] = $TH[$k]; $v = $m['p75'];
+        if ($v <= $g) return (int)round(90 + 10 * (1 - $v / $g));
+        if ($v <= $p) return (int)round(50 + 40 * ($p - $v) / ($p - $g));
+        return (int)max(0, round(50 * (1 - ($v - $p) / $p)));
+    };
+    $H = []; foreach (array_keys($TH) as $k) $H[$k] = $metric($k);
+    $H['lcp_mobile'] = $metric('lcp', "AND device='Mobile'");
+    $W = ['lcp' => .35, 'inp' => .3, 'cls' => .25, 'ttfb' => .1]; $sum = 0; $wt = 0;
+    foreach ($W as $k => $w) { $s = $score($H[$k], $k); if ($s !== null) { $sum += $s * $w; $wt += $w; $H[$k]['score'] = $s; } }
+    $st = $db->prepare("SELECT {$PREF('eng')} AS name, status, COUNT(*) n FROM eng WHERE $IN AND ts>=? AND status>=400 GROUP BY 1, 2 ORDER BY n DESC LIMIT 12");
+    $st->execute([$from]); $errs = array_map(fn($r) => ['name' => $r['name'], 'status' => (int)$r['status'], 'n' => (int)$r['n']], $st->fetchAll());
+    $st = $db->prepare("SELECT COUNT(*) FROM eng WHERE $IN AND ts>=?"); $st->execute([$from]); $measuredPages = (int)$st->fetchColumn();
+    $errN = array_sum(array_column($errs, 'n'));
+    $overall = $wt ? $sum / $wt : null;
+    if ($overall !== null && $measuredPages) $overall = max(0, $overall - min(15, $errN / $measuredPages * 100 * 1.5));
+    $health = ['score' => $overall !== null ? (int)round($overall) : null, 'metrics' => $H, 'errors' => $errs, 'error_rate' => $measuredPages ? round($errN / $measuredPages * 100, 1) : 0,
+        'pages' => $measuredPages];
+
     $out = [
+        'engagement' => $E, 'engagement_prev' => $Ep, 'eng_since' => $since ? (int)$since : null,
+        'entries' => array_slice($entries, 0, 10), 'exits' => array_slice($exits, 0, 10), 'pages_eng' => $pagesEng,
+        'funnel' => $funnel, 'health' => $health,
+        'from' => $from, 'to' => $now,
         'direct' => $direct,
         'channels' => $channels, 'cities' => $cities, 'geo' => $geo, 'unknown_city' => $unknownCity, 'ads' => $ads,
         'site' => $sc['site'], 'all' => $sc['all'],
@@ -293,7 +396,16 @@ if ($a === 'stats') {
         $clients = (int)$db->query("SELECT COUNT(*) FROM users WHERE role='client'")->fetchColumn();
         $out['totals'] = ['sites' => count($rows), 'clients' => $clients, 'active' => count(array_filter($rows, fn($r) => $r['last_hit'] && $r['last_hit'] > $now - 7 * 86400))];
     }
+    if ($a === 'csv') izs_csv($out, (string)($_GET['type'] ?? 'days'));
     izs_json($out);
+}
+
+/* Valeur moyenne d'un contact (en euros), pour estimer la valeur générée par le site */
+if ($a === 'set_value' && $method === 'POST') {
+    $s = izs_site_or_403($u, $in['site_id'] ?? 0);
+    $v = max(0, min(1000000, (int)round((float)str_replace(',', '.', (string)($in['value'] ?? 0)))));
+    $db->prepare('UPDATE sites SET lead_value=? WHERE id=?')->execute([$v ?: null, $s['id']]);
+    izs_json(['ok' => true, 'value' => $v]);
 }
 
 /* Budget Google Ads mensuel du site (renseigné par le client ou par IZENINFO) */

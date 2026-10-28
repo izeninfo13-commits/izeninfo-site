@@ -210,12 +210,116 @@
     $("citiesSub").textContent = "Ville approximative des visiteurs (visites)" + (d.unknown_city ? ` · ${nf.format(d.unknown_city)} visite${d.unknown_city > 1 ? "s" : ""} hors zone ou non identifiée${d.unknown_city > 1 ? "s" : ""}` : "");
     renderAds(d);
     state.periodGeo = d.geo || []; mapSync();
+    renderBrief(d); renderEng(d); renderFunnel(d); renderHealth(d);
     bars("lPages", d.pages, false, "Aucune page vue sur la période");
     bars("lDevices", d.devices, visits, "Aucune donnée");
     bars("lCountries", d.countries, visits, "Aucune donnée");
     bars("lBrowsers", d.browsers, visits, "Aucune donnée");
     setText("eTel", nf.format(d.events.tel)); setText("eMail", nf.format(d.events.mail)); setText("eForm", nf.format(d.events.form));
   }
+
+  /* ---------------- Résumé intelligent (insights.js) ---------------- */
+  const I = () => window.IZInsights;
+  const pctS = (v, dgt = 0) => v == null ? "–" : (Math.round(v * Math.pow(10, dgt)) / Math.pow(10, dgt)).toLocaleString("fr-FR") + " %";
+  function renderBrief(d) {
+    if (!I()) return;
+    const items = I().summary(d);
+    const ic = { up: "▲", down: "▼", warn: "!", info: "•" };
+    $("insights").innerHTML = items.map(x => `<li class="${x.tone}"><i aria-hidden="true">${ic[x.tone] || "•"}</i><span>${x.html}</span></li>`).join("");
+    const rec = I().recos(d)[0];
+    $("briefSub").innerHTML = rec ? `Priorité du moment : <b>${esc(rec.title)}</b> — ${esc(rec.text)}` : "Résumé généré automatiquement à partir de vos chiffres";
+  }
+
+  /* ---------------- Engagement ---------------- */
+  function dd(cur, prev, unit, invert) {
+    if (cur == null || prev == null) return "";
+    const diff = Math.round((cur - prev) * 10) / 10; if (!diff) return "= stable";
+    const good = invert ? diff < 0 : diff > 0;
+    return `<span class="${good ? "up" : "down"}">${diff > 0 ? "▲ +" : "▼ "}${String(diff).replace(".", ",")}${unit}</span> vs précédente`;
+  }
+  function renderEng(d) {
+    const E = d.engagement || {}, P = d.engagement_prev || {}, prevOk = P.measured >= 5;
+    setText("eT", I() ? I().dur(E.avg_time) : "–"); $("eTd").innerHTML = prevOk && E.avg_time != null ? dd(E.avg_time, P.avg_time, " s") : "";
+    setText("eB", pctS(E.bounce_rate)); $("eBd").innerHTML = P.visits ? dd(E.bounce_rate, P.bounce_rate, " pt", true) : "";
+    setText("eE", pctS(E.engaged_rate)); $("eEd").innerHTML = prevOk ? dd(E.engaged_rate, P.engaged_rate, " pt") : `${nf.format(E.engaged || 0)} visites`;
+    setText("eS", E.scroll != null ? pctS(E.scroll) : "–"); $("eSd").innerHTML = prevOk && P.scroll != null ? dd(E.scroll, P.scroll, " pt") : "de chaque page";
+    const short = p => esc(String(p).length > 46 ? String(p).slice(0, 44) + "…" : p);
+    const ent = d.entries || [];
+    $("entBody").innerHTML = ent.length ? ent.slice(0, 8).map(r => `<tr><td class="txt" title="${esc(r.name)}">${short(r.name)}</td><td>${nf.format(r.n)}</td>
+      <td class="${r.bounce >= 60 ? "bad" : ""}">${pctS(r.bounce)}</td><td class="${r.rate >= 8 ? "good" : ""}">${r.contacts ? pctS(r.rate, 1) : "–"}</td></tr>`).join("")
+      : `<tr><td class="txt" colspan="4">Aucune visite sur la période</td></tr>`;
+    const pg = d.pages_eng || [];
+    $("pgBody").innerHTML = pg.length ? pg.slice(0, 8).map(r => `<tr><td class="txt" title="${esc(r.name)}">${short(r.name)}</td><td>${nf.format(r.views)}</td>
+      <td>${r.time != null ? (I() ? I().dur(r.time) : r.time + " s") : "–"}</td><td>${r.scroll != null ? `<span class="meter"><i style="width:${r.scroll}%"></i></span>${r.scroll} %` : "–"}</td><td>${pctS(r.exit)}</td></tr>`).join("")
+      : `<tr><td class="txt" colspan="5">Aucune page vue sur la période</td></tr>`;
+    const since = d.eng_since ? new Date(d.eng_since * 1000) : null;
+    $("engNote").textContent = (since && since > new Date(d.from * 1000) ? `Temps passé et lecture mesurés depuis le ${since.toLocaleDateString("fr-FR")} : les périodes antérieures ne comptent que le rebond. ` : "")
+      + "Rebond = visite d'une seule page sans contact. Visite engagée = 2 pages ou plus, 10 s de lecture ou un contact.";
+  }
+
+  /* ---------------- Entonnoir ---------------- */
+  function renderFunnel(d) {
+    const F = d.funnel || {}, S = F.steps || [], top = S[0] ? S[0].n : 0;
+    $("funnel").innerHTML = S.map((st, i) => {
+      const w = top ? Math.max(4, st.n / top * 100) : 4, prev = i ? S[i - 1].n : 0;
+      const conv = i ? (prev ? pctS(st.n / prev * 100, 1) + " de l'étape précédente" : "–") : "100 %";
+      return `<li style="--w:${w}%"><div class="fb"><i></i><b>${nf.format(st.n)}</b></div><div class="fl"><strong>${esc(st.name)}</strong><span>${conv}</span><small>${esc(st.hint)}</small></div></li>`;
+    }).join("");
+    const E = d.engagement || {};
+    setText("fRate", E.visits ? pctS(E.converted / E.visits * 100, 1) : "–");
+    const pr = F.prev_visits ? F.prev_converted / F.prev_visits * 100 : null;
+    $("fRated").innerHTML = pr != null && E.visits ? dd(Math.round(E.converted / E.visits * 1000) / 10, Math.round(pr * 10) / 10, " pt") : "";
+    const eur = I() ? I().euro : (v => v + " €");
+    setText("fVal", F.value != null ? eur(F.value) : "–");
+    $("fVald").innerHTML = F.value != null ? (F.prev_value ? delta(F.value, F.prev_value) : `${nf.format(E.converted || 0)} contacts × ${eur(F.lead_value)}`) : "renseignez la valeur d'un contact";
+    $("fLead").hidden = !!d.all;
+    if (document.activeElement !== $("iLead")) $("iLead").value = F.lead_value || "";
+  }
+  $("fLead").addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button");
+    try { await api("set_value", { site_id: state.site.id, value: $("iLead").value }); btn.textContent = "Enregistré"; setTimeout(() => btn.textContent = "Enregistrer", 1500); loadStats(true); }
+    catch (err) { btn.textContent = "Erreur"; setTimeout(() => btn.textContent = "Enregistrer", 1800); }
+  });
+
+  /* ---------------- Santé du site ---------------- */
+  const HM = [["lcp", "Affichage du contenu", "Temps pour voir l'essentiel de la page (LCP)"], ["inp", "Réactivité", "Délai de réaction après un clic (INP)"],
+    ["cls", "Stabilité visuelle", "Décalages pendant le chargement (CLS)"], ["ttfb", "Réponse du serveur", "Premier octet reçu (TTFB)"]];
+  function renderHealth(d) {
+    const H = d.health || {}, M = H.metrics || {};
+    const sc = H.score, arc = $("hArc"), C = 2 * Math.PI * 52;
+    arc.style.strokeDasharray = `${sc != null ? C * sc / 100 : 0} ${C}`;
+    arc.style.opacity = sc != null ? "1" : "0";
+    $("hScore").className = "hscore " + (sc == null ? "" : sc >= 75 ? "good" : sc >= 50 ? "ni" : "poor");
+    setText("hNum", sc != null ? String(sc) : "–");
+    $("hLab").textContent = sc == null ? "en attente de mesures" : sc >= 90 ? "Excellent" : sc >= 75 ? "Bon" : sc >= 50 ? "À améliorer" : "Lent";
+    const fmt = (k, v) => k === "cls" ? String(Math.round(v * 100) / 100).replace(".", ",") : v >= 1000 ? String(Math.round(v / 100) / 10).replace(".", ",") + " s" : Math.round(v) + " ms";
+    const lab = { good: "Bon", ni: "À améliorer", poor: "Lent" };
+    $("hMetrics").innerHTML = HM.map(([k, t, h]) => {
+      const m = M[k]; if (!m) return `<div class="hm"><span>${t}</span><b>–</b><small>${h}</small></div>`;
+      const r = I() ? I().rate(k, m.p75) : "good";
+      return `<div class="hm ${r}"><span>${t}</span><b>${fmt(k, m.p75)}<em>${lab[r]}</em></b>
+        <div class="tri" title="${m.good} % bon · ${m.ni} % à améliorer · ${m.poor} % lent"><i class="g" style="width:${m.good}%"></i><i class="n" style="width:${m.ni}%"></i><i class="p" style="width:${m.poor}%"></i></div>
+        <small>${h} · ${nf.format(m.n)} mesures</small></div>`;
+    }).join("");
+    const er = H.errors || [];
+    $("hErr").hidden = !er.length;
+    $("hErrList").innerHTML = er.map(e => `<li><code>${esc(e.name)}</code><span class="st">${e.status}</span><span>${nf.format(e.n)} fois</span></li>`).join("");
+    $("healthSub").textContent = H.pages ? `Vitesse mesurée chez vos vrais visiteurs (75e centile, ${nf.format(H.pages)} pages mesurées) et erreurs rencontrées`
+      : "Les mesures de vitesse s'affichent dès les prochaines visites (code de mesure mis à jour automatiquement).";
+  }
+
+  /* ---------------- Rapport PDF et exports CSV ---------------- */
+  $("bReport").addEventListener("click", () => {
+    if (!state.site) return;
+    window.open(`rapport.html?site=${encodeURIComponent(state.site.id)}&range=${encodeURIComponent(state.range)}`, "_blank", "noopener");
+  });
+  $("ddCsv").addEventListener("click", e => {
+    const a = e.target.closest("a[data-csv]"); if (!a || !state.site) return;
+    a.href = `api.php?a=csv&site=${encodeURIComponent(state.site.id)}&range=${encodeURIComponent(state.range)}&type=${a.dataset.csv}`;
+    $("ddCsv").open = false;
+  });
+  document.addEventListener("click", e => { if (!e.target.closest("#ddCsv")) $("ddCsv").open = false; });
 
   /* Carte des connexions (globe WebGL, globe.js) */
   function mapSync() {

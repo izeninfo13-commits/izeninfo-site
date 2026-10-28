@@ -297,5 +297,5 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
     };
   }
 
-  window.IZGlobe = { create };
+  window.IZGlobe = { create, land };
 })();

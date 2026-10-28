@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#05040A">
 <title>Espace client · IZENINFO</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
-<link rel="stylesheet" href="app.css?v=12">
+<link rel="stylesheet" href="app.css?v=13">
 <script defer src="/sphere.js"></script>
 <style>.logo{gap:.7em!important}.logo .izm{width:1.95em;height:1.95em;flex:none;overflow:visible;transform-origin:50% 50%;animation:iztilt 9s ease-in-out infinite alternate}.logo .wm{height:.7em;width:auto;display:block}@keyframes iztilt{from{transform:perspective(320px) rotateY(-18deg)}to{transform:perspective(320px) rotateY(18deg)}}@media (prefers-reduced-motion:reduce){.logo .izm{animation:none}.shine{display:none}}@media (max-width:440px){.logo .wm{height:.5em!important}.logo .izm{width:1.7em;height:1.7em}}</style>
 </head>
@@ -59,6 +59,20 @@
         <button type="button" data-range="30d" aria-pressed="true">30 jours</button>
         <button type="button" data-range="12m" aria-pressed="false">12 mois</button>
       </div>
+      <div class="tools">
+        <button class="btn sm" type="button" id="bReport"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z M14 2v6h6 M9 13h8 M9 17h6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Rapport PDF</button>
+        <details class="dd" id="ddCsv">
+          <summary class="btn sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 10l5 5 5-5 M4 19h16" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Export CSV</summary>
+          <div class="menu" role="menu">
+            <a role="menuitem" data-csv="days" href="#">Fréquentation par jour</a>
+            <a role="menuitem" data-csv="channels" href="#">Canaux d'arrivée</a>
+            <a role="menuitem" data-csv="sources" href="#">Sources détaillées</a>
+            <a role="menuitem" data-csv="pages" href="#">Pages et engagement</a>
+            <a role="menuitem" data-csv="entries" href="#">Pages d'entrée</a>
+            <a role="menuitem" data-csv="cities" href="#">Villes</a>
+          </div>
+        </details>
+      </div>
     </div>
 
     <div class="notice" id="install" hidden>
@@ -67,7 +81,12 @@
       <code id="installCode"></code>
     </div>
 
-    <section data-shape="0" data-dim=".4" class="grid kpis" aria-label="Chiffres clés">
+    <section data-shape="3" data-dim=".35" class="card brief" aria-labelledby="hBrief">
+      <div class="card-head"><div><h2 id="hBrief"><span class="spark" aria-hidden="true"></span>L'essentiel</h2><p class="sub" id="briefSub">Résumé généré automatiquement à partir de vos chiffres</p></div></div>
+      <ul class="insights" id="insights"><li class="info">Analyse en cours…</li></ul>
+    </section>
+
+    <section data-shape="0" data-dim=".4" class="grid kpis mt" aria-label="Chiffres clés">
       <div class="card kpi live">
         <div class="label"><span class="dot" aria-hidden="true"></span>En ce moment</div>
         <div class="value" id="liveN">0</div>
@@ -103,6 +122,44 @@
         <p class="gnogl">La carte nécessite WebGL, indisponible sur ce navigateur.</p>
       </div>
       <div class="gstats" id="gStats"></div>
+    </section>
+
+    <section data-shape="1" data-dim=".4" class="card mt" aria-labelledby="hEng">
+      <div class="card-head"><div><h2 id="hEng">Engagement des visiteurs</h2><p class="sub" id="engSub">Temps réellement passé (onglet visible), lecture et rebond</p></div></div>
+      <div class="grid four eng-k">
+        <div class="mini"><span>Temps moyen par visite</span><b id="eT">–</b><em id="eTd"></em></div>
+        <div class="mini"><span>Taux de rebond</span><b id="eB">–</b><em id="eBd"></em></div>
+        <div class="mini"><span>Visites engagées</span><b id="eE">–</b><em id="eEd"></em></div>
+        <div class="mini"><span>Lecture moyenne</span><b id="eS">–</b><em id="eSd"></em></div>
+      </div>
+      <div class="grid two mt-s">
+        <div><h3 class="h3">Pages d'entrée</h3><div class="table-x"><table class="data"><thead><tr><th>Page</th><th>Visites</th><th>Rebond</th><th>Contact</th></tr></thead><tbody id="entBody"></tbody></table></div></div>
+        <div><h3 class="h3">Pages consultées</h3><div class="table-x"><table class="data"><thead><tr><th>Page</th><th>Vues</th><th>Temps</th><th>Lecture</th><th>Sortie</th></tr></thead><tbody id="pgBody"></tbody></table></div></div>
+      </div>
+      <p class="note-s" id="engNote"></p>
+    </section>
+
+    <section data-shape="4" data-dim=".4" class="card mt" aria-labelledby="hFun">
+      <div class="card-head"><div><h2 id="hFun">Entonnoir de contact</h2><p class="sub">Du simple passage à la prise de contact</p></div></div>
+      <div class="funnel-wrap">
+        <ol class="funnel" id="funnel"></ol>
+        <div class="fval">
+          <div class="mini big"><span>Taux de contact</span><b id="fRate">–</b><em id="fRated"></em></div>
+          <div class="mini big"><span>Valeur estimée générée</span><b id="fVal">–</b><em id="fVald"></em></div>
+          <form class="lv" id="fLead" novalidate><label for="iLead">Valeur moyenne d'un contact</label>
+            <div class="lv-row"><input id="iLead" inputmode="decimal" placeholder="ex. 250" aria-describedby="lvHint"><span>€</span><button class="btn sm" type="submit">Enregistrer</button></div>
+            <small id="lvHint">Panier moyen ou valeur d'un devis signé × taux de signature.</small></form>
+        </div>
+      </div>
+    </section>
+
+    <section data-shape="2" data-dim=".4" class="card mt" aria-labelledby="hHealth">
+      <div class="card-head"><div><h2 id="hHealth">Santé du site</h2><p class="sub" id="healthSub">Vitesse mesurée chez vos vrais visiteurs (Core Web Vitals, 75e centile) et erreurs rencontrées</p></div></div>
+      <div class="health">
+        <div class="hscore" id="hScore"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" class="trk"/><circle cx="60" cy="60" r="52" class="val" id="hArc"/></svg><div><b id="hNum">–</b><span id="hLab">en attente de mesures</span></div></div>
+        <div class="hmetrics" id="hMetrics"></div>
+      </div>
+      <div class="herr" id="hErr" hidden><h3 class="h3">Pages en erreur rencontrées par vos visiteurs</h3><ul id="hErrList"></ul></div>
     </section>
 
     <section data-shape="2" data-dim=".4" class="card mt" id="compare" hidden aria-labelledby="hCompare">
@@ -224,7 +281,8 @@
   </form>
 </dialog>
 
-<script defer src="globe.js?v=7"></script>
-<script src="app.js?v=7" defer></script>
+<script defer src="globe.js?v=8"></script>
+<script defer src="insights.js?v=2"></script>
+<script src="app.js?v=8" defer></script>
 </body>
 </html>
