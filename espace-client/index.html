@@ -4,18 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#05040A">
 <title>Espace client · IZENINFO</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="app.css?v=8">
-<style>.logo{gap:.55em!important;letter-spacing:0!important}.logo .wm{height:.95em;width:auto;display:block;overflow:visible}.logo .wm .a{fill:currentColor}.logo .wm .b{fill:var(--accent)}.e3{--s:2.05em;--c:currentColor;--k:var(--accent);width:var(--s);height:var(--s);display:inline-block;perspective:calc(var(--s)*6);flex:none}.e3 .r{position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;animation:e3spin 10s linear infinite}.e3 b{position:absolute;display:block;inset:20%;border:calc(var(--s)*.05) solid var(--c);border-radius:calc(var(--s)*.07)}.e3 .l1{transform:translateZ(calc(var(--s)*-.22))}.e3 .l3{transform:translateZ(calc(var(--s)*.22));border-color:var(--k);background:color-mix(in srgb,var(--k) 45%,transparent);animation:e3lift 3.2s ease-in-out infinite}@keyframes e3spin{from{transform:rotateX(58deg) rotateZ(0)}to{transform:rotateX(58deg) rotateZ(360deg)}}@keyframes e3lift{50%{transform:translateZ(calc(var(--s)*.34))}}@media (prefers-reduced-motion:reduce){.e3 .r,.e3 b{animation:none!important}.e3 .r{transform:rotateX(58deg) rotateZ(45deg)}}@media (max-width:440px){.logo .wm{height:.72em!important}.logo .e3{--s:1.6em}}</style>
+<link rel="stylesheet" href="app.css?v=9">
+<script defer src="/sphere.js"></script>
 <style>.logo{gap:.7em!important}.logo .izm{width:1.95em;height:1.95em;flex:none;overflow:visible;transform-origin:50% 50%;animation:iztilt 9s ease-in-out infinite alternate}.logo .wm{height:.7em;width:auto;display:block}@keyframes iztilt{from{transform:perspective(320px) rotateY(-18deg)}to{transform:perspective(320px) rotateY(18deg)}}@media (prefers-reduced-motion:reduce){.logo .izm{animation:none}.shine{display:none}}@media (max-width:440px){.logo .wm{height:.5em!important}.logo .izm{width:1.7em;height:1.7em}}</style>
 </head>
-<body><svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="izPlatHi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#D3D9E2"/><stop offset=".6" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C2CAD5"/></linearGradient><linearGradient id="izPlat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F6F9"/><stop offset=".35" stop-color="#B9C1CC"/><stop offset=".55" stop-color="#EEF1F5"/><stop offset=".8" stop-color="#8D97A4"/><stop offset="1" stop-color="#D9DEE5"/></linearGradient><linearGradient id="izShine" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".9"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/><animateTransform attributeName="gradientTransform" type="translate" values="-1.2 0;1.2 0;1.2 0" keyTimes="0;.45;1" dur="6s" repeatCount="indefinite"/></linearGradient></defs></svg>
+<body><svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="izPlatHi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#D3D9E2"/><stop offset=".6" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C2CAD5"/></linearGradient><linearGradient id="izPlat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F6F9"/><stop offset=".35" stop-color="#B9C1CC"/><stop offset=".55" stop-color="#EEF1F5"/><stop offset=".8" stop-color="#8D97A4"/><stop offset="1" stop-color="#D9DEE5"/></linearGradient><linearGradient id="izShine" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".9"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/><animateTransform attributeName="gradientTransform" type="translate" values="-1.2 0;1.2 0;1.2 0" keyTimes="0;.45;1" dur="6s" repeatCount="indefinite"/></linearGradient></defs></svg><canvas id="sphere" aria-hidden="true"></canvas><div class="veil" aria-hidden="true"></div>
 
 <!-- Connexion / première configuration -->
-<main class="auth" id="vAuth" hidden>
+<main class="auth" id="vAuth" hidden data-shape="0" data-side="center" data-dim=".85">
   <div class="auth-card">
     <a class="logo" href="/"><svg class="izm" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g fill="url(#izPlatHi)"><path d="M11.5 5.6 L95.5 5.6 L95.5 6.9 L11.5 6.9 Z"/><path d="M19.6 6.9 C21.4 7.4 21.9 9.2 21.9 11.5 L21.9 86 C21.9 91.6 25.6 95.3 32 95.3 L96.5 95.3 L96.5 94 L32 94 C29.1 94 27.4 91.2 27.4 87.4 L27.4 11.5 C27.4 9.2 27.9 7.4 29.7 6.9 Z"/><path d="M89.6 6.9 L95.5 6.9 L28.2 93.2 L27.4 93.2 L27.4 86.2 Z"/></g><g class="shine" fill="url(#izShine)"><path d="M11.5 5.6 L95.5 5.6 L95.5 6.9 L11.5 6.9 Z"/><path d="M19.6 6.9 C21.4 7.4 21.9 9.2 21.9 11.5 L21.9 86 C21.9 91.6 25.6 95.3 32 95.3 L96.5 95.3 L96.5 94 L32 94 C29.1 94 27.4 91.2 27.4 87.4 L27.4 11.5 C27.4 9.2 27.9 7.4 29.7 6.9 Z"/><path d="M89.6 6.9 L95.5 6.9 L28.2 93.2 L27.4 93.2 L27.4 86.2 Z"/></g></svg><svg class="wm" viewBox="-2 -2 1170.0 104" role="img" aria-label="IZENINFO"><g fill="url(#izPlatHi)"><path d="M0 0 L6 0 L6 100 L0 100 Z"/><path d="M84 0 L184 0 L184 4.8 L84 4.8 Z"/><path d="M84 95.2 L184 95.2 L184 100 L84 100 Z"/><path d="M179.58 4.3 L184 4.3 L88.42 95.7 L84 95.7 Z"/><path d="M262 0 L268 0 L268 100 L262 100 Z"/><path d="M262 0 L350 0 L350 4.8 L262 4.8 Z"/><path d="M262 47.6 L330.64 47.6 L330.64 52.4 L262 52.4 Z"/><path d="M262 95.2 L350 95.2 L350 100 L262 100 Z"/><path d="M428 0 L434 0 L434 100 L428 100 Z"/><path d="M528 0 L534 0 L534 100 L528 100 Z"/><path d="M433.5 0 L436.9 0 L528.5 100 L525.1 100 Z"/><path d="M612 0 L618 0 L618 100 L612 100 Z"/><path d="M696 0 L702 0 L702 100 L696 100 Z"/><path d="M796 0 L802 0 L802 100 L796 100 Z"/><path d="M701.5 0 L704.9 0 L796.5 100 L793.1 100 Z"/><path d="M880 0 L886 0 L886 100 L880 100 Z"/><path d="M880 0 L966 0 L966 4.8 L880 4.8 Z"/><path d="M880 47.6 L947.08 47.6 L947.08 52.4 L880 52.4 Z"/><path d="M 1096.00 -1.40 C 1140.10 -1.40 1166.00 17.62 1166.00 50.00 C 1166.00 82.38 1140.10 101.40 1096.00 101.40 C 1051.90 101.40 1026.00 82.38 1026.00 50.00 C 1026.00 17.62 1051.90 -1.40 1096.00 -1.40 Z M 1096.00 3.40 C 1054.40 3.40 1032.00 19.71 1032.00 50.00 C 1032.00 80.29 1054.40 96.60 1096.00 96.60 C 1137.60 96.60 1160.00 80.29 1160.00 50.00 C 1160.00 19.71 1137.60 3.40 1096.00 3.40 Z"/></g></svg></a>
     <div>
@@ -68,7 +67,7 @@
       <code id="installCode"></code>
     </div>
 
-    <section class="grid kpis" aria-label="Chiffres clés">
+    <section data-shape="0" data-dim=".4" class="grid kpis" aria-label="Chiffres clés">
       <div class="card kpi live">
         <div class="label"><span class="dot" aria-hidden="true"></span>En ce moment</div>
         <div class="value" id="liveN">0</div>
@@ -82,7 +81,7 @@
       <div class="card kpi"><div class="label">Contacts</div><div class="value" id="kC">–</div><div class="delta" id="dC"></div></div>
     </section>
 
-    <section class="card mt" aria-labelledby="hTraffic">
+    <section data-shape="1" data-dim=".4" class="card mt" aria-labelledby="hTraffic">
       <div class="card-head">
         <div><h2 id="hTraffic">Fréquentation</h2><p class="sub" id="trafficSub"></p></div>
         <div class="legend" aria-hidden="true"><span><i style="background:var(--series-1)"></i>Visiteurs</span><span><i style="background:var(--series-2)"></i>Pages vues</span></div>
@@ -92,7 +91,7 @@
       <div class="table-scroll" id="tableWrap" hidden></div>
     </section>
 
-    <section class="card mt" id="compare" hidden aria-labelledby="hCompare">
+    <section data-shape="2" data-dim=".4" class="card mt" id="compare" hidden aria-labelledby="hCompare">
       <h2 id="hCompare">Comparatif par site</h2>
       <p class="sub" id="compareSub"></p>
       <div class="table-x">
@@ -104,7 +103,7 @@
       <p class="sub" style="margin:10px 0 0">Cliquez sur un site pour afficher son détail.</p>
     </section>
 
-    <section class="card mt" aria-labelledby="hProv">
+    <section data-shape="4" data-dim=".4" class="card mt" aria-labelledby="hProv">
       <div class="card-head"><div><h2 id="hProv">Provenance des visites</h2><p class="sub">Par où arrivent vos visiteurs, et lesquels vous contactent</p></div></div>
       <div class="prov">
         <div class="table-x"><table class="data chan"><thead><tr><th class="txt">Canal</th><th>Visites</th><th>Part</th><th>Contacts</th><th>Taux de contact</th></tr></thead><tbody id="chanBody"></tbody></table></div>
@@ -138,7 +137,7 @@
       </div>
     </section>
 
-    <section class="card mt ads" id="adsCard" hidden aria-labelledby="hAds">
+    <section data-shape="3" data-dim=".4" class="card mt ads" id="adsCard" hidden aria-labelledby="hAds">
       <div class="card-head">
         <div><h2 id="hAds">Google Ads : est-ce rentable ?</h2><p class="sub" id="adsSub">Visites issues de vos annonces payantes Google et contacts qu'elles génèrent</p></div>
         <form class="budget" id="fBudget" novalidate><label for="iBudget">Budget Google Ads mensuel</label><span><input id="iBudget" inputmode="decimal" placeholder="ex. 150"> €</span><button class="btn sm" type="submit">Enregistrer</button></form>
@@ -153,18 +152,18 @@
       <p class="note" id="adsNote"></p>
     </section>
 
-    <section class="grid two mt">
+    <section data-shape="1" data-dim=".4" class="grid two mt">
       <div class="card"><h2>Villes</h2><p class="sub" id="citiesSub">Ville approximative des visiteurs (visites)</p><ul class="bars" id="lCities"></ul></div>
       <div class="card"><h2>Pages les plus vues</h2><p class="sub">Pages vues sur la période</p><ul class="bars" id="lPages"></ul></div>
     </section>
 
-    <section class="grid three mt">
+    <section data-shape="2" data-dim=".4" class="grid three mt">
       <div class="card"><h2>Appareils</h2><p class="sub">Part des visites</p><ul class="bars" id="lDevices"></ul></div>
       <div class="card"><h2>Pays</h2><p class="sub">Part des visites</p><ul class="bars" id="lCountries"></ul></div>
       <div class="card"><h2>Navigateurs</h2><p class="sub">Part des visites</p><ul class="bars" id="lBrowsers"></ul></div>
     </section>
 
-    <section class="card mt" aria-labelledby="hActions">
+    <section data-shape="4" data-dim=".4" class="card mt" aria-labelledby="hActions">
       <h2 id="hActions">Demandes de contact</h2>
       <p class="sub">Clics sur votre numéro, votre e-mail et formulaires envoyés</p>
       <div class="actions">
@@ -181,7 +180,7 @@
   </main>
 
   <!-- Administration -->
-  <main class="wrap" id="vAdmin" hidden>
+  <main class="wrap" id="vAdmin" hidden data-shape="2" data-dim=".4">
     <div class="filters"><h1>Clients<small>Créez un accès et récupérez le code de mesure à placer sur le site.</small></h1></div>
     <section class="card">
       <h2>Nouveau client</h2>
