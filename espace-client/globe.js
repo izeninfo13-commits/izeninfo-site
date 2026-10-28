@@ -40,15 +40,17 @@ void main(){vec2 d=gl_PointCoord-.5;float r=length(d)*2.;if(r>1.)discard;float a
  else a=smoothstep(.62,.84,r)*(1.-smoothstep(.84,1.,r))*(1.-v_ph)*1.8;
  gl_FragColor=vec4(v_c.rgb*v_c.a*a,v_c.a*a);}`;
   const VS_ARC = `attribute vec3 a_p;attribute vec3 a_q;
-uniform mat3 u_m;uniform vec2 u_sc;uniform float u_t;
+uniform mat3 u_m;uniform vec2 u_sc;uniform float u_t;uniform float u_px;
 varying float v_a;varying float v_u;
-void main(){vec3 p=u_m*a_p;float u=a_q.x;float head=fract(u_t*.32+a_q.y);float d=u-head;
- float trail=(d<0.&&d>-.22)?pow(1.+d/.22,2.):0.;
+void main(){vec3 p=u_m*a_p;float u=a_q.x;float head=fract(u_t*.28+a_q.y);float d=u-head;
+ float trail=(d<=0.&&d>-.3)?pow(1.+d/.3,2.5):0.;
  float vis=clamp(max(p.z*5.+.4,(length(p.xy)-1.)*25.),0.,1.);
- v_a=vis*a_q.z*(.3+1.2*trail);v_u=u;
- gl_Position=vec4(p.x*u_sc.x,p.y*u_sc.y,0.,1.);}`;
+ v_a=vis*a_q.z*(.6+.9*trail);v_u=u;
+ gl_Position=vec4(p.x*u_sc.x,p.y*u_sc.y,0.,1.);
+ gl_PointSize=u_px*(2.+1.4*a_q.z+4.5*trail);}`;
   const FS_ARC = `precision mediump float;varying float v_a;varying float v_u;
-void main(){vec3 c=mix(vec3(.55,.42,1.),vec3(.38,.86,1.),v_u);gl_FragColor=vec4(c*v_a,v_a);}`;
+void main(){float r=length(gl_PointCoord-.5)*2.;if(r>1.)discard;float a=v_a*(1.-smoothstep(.35,1.,r))*.55;
+ vec3 c=mix(vec3(.62,.5,1.),vec3(.45,.9,1.),v_u);gl_FragColor=vec4(c*a,a);}`;
   const VS_BG = `attribute vec2 a_p;varying vec2 v_p;void main(){v_p=a_p;gl_Position=vec4(a_p,0.,1.);}`;
   const FS_BG = `precision mediump float;varying vec2 v_p;uniform vec2 u_sc;
 void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
@@ -82,6 +84,8 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
 
   function create(root) {
     const cv = root.querySelector("canvas"), tip = root.querySelector(".gtip");
+    const labBox = document.createElement("div"); labBox.className = "glabs"; labBox.setAttribute("aria-hidden", "true"); root.insertBefore(labBox, tip);
+    let labs = [];
     const gl = cv.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: true });
     if (!gl) { root.classList.add("nogl"); return null; }
     let PT, ARC, BG;
@@ -98,39 +102,47 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
     function build() {
       const f = [];
       const P = (v, r, g, b, a, s, k) => f.push(v[0], v[1], v[2], r, g, b, a, s, k);
-      for (const [la, lo, v, k] of LANDPTS) k === 4 ? P(xyz(la, lo), .5 + .05 * v, .48 + .3 * v, 1, .35 + .6 * v, 1.5 + 1.1 * v, 4)
+      for (const [la, lo, v, k] of LANDPTS) k === 4 ? P(xyz(la, lo), .52 + .1 * v, .52 + .3 * v, 1, .38 + .45 * v, 1.8 + 1.1 * v, 4)
         : P(xyz(la, lo), .5, .44, 1, .3 + .4 * v, 1.4 + .8 * v, 0);
       marks = [];
       const max = period.reduce((m, c) => Math.max(m, c.n), 1);
       for (const c of period) {
         const q = Math.sqrt(c.n / max), v = xyz(c.lat, c.lon, 1.003);
-        P(v, .55 - .17 * q, .45 + .41 * q, 1, .55 + .4 * q, 7 + 26 * q, 1);
+        P(v, .62 - .2 * q, .55 + .38 * q, 1, .8 + .2 * q, 11 + 30 * q, 1);
         marks.push({ v, c, kind: "p" });
       }
       for (const c of live) {
         const v = xyz(c.lat, c.lon, 1.005);
-        P(v, 1, 1, 1, 1, 7, 1);
-        P(v, .55, .95, 1, 1, 16, 2);
+        P(v, 1, 1, 1, 1, 10, 1);
+        P(v, .55, .95, 1, 1, 22, 2);
         marks.push({ v, c, kind: "l" });
       }
-      if (hub) P(xyz(hub.lat, hub.lon, 1.006), 1, .95, 1, 1, 9, 1);
+      if (hub) { P(xyz(hub.lat, hub.lon, 1.006), 1, .95, 1, 1, 12, 1); P(xyz(hub.lat, hub.lon, 1.006), .75, .6, 1, .7, 30, 2); }
+      /* Étiquettes : les villes principales et celles en ligne */
+      const seen = new Set(), L = [];
+      for (const c of live.concat(period.slice(0, 7))) {
+        const key = c.lat + "," + c.lon; if (seen.has(key)) continue; seen.add(key);
+        const isLive = live.some(x => x.lat === c.lat && x.lon === c.lon), inP = period.find(x => x.lat === c.lat && x.lon === c.lon);
+        L.push({ v: xyz(c.lat, c.lon), name: String(c.name).split(" · ")[0], n: inP ? inP.n : 0, live: isLive });
+      }
+      labBox.textContent = "";
+      labs = L.map(l => { const d = document.createElement("span"); d.className = "glab" + (l.live ? " on" : "");
+        d.innerHTML = `${esc(l.name)}${l.n ? ` <i>${nf.format(l.n)}</i>` : ""}`; labBox.appendChild(d); return { ...l, el: d }; });
       nPt = f.length / 9;
       gl.bindBuffer(gl.ARRAY_BUFFER, bPt); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(f), gl.STATIC_DRAW);
 
       const a = [];
       if (hub) {
         const H3 = xyz(hub.lat, hub.lon);
-        const arcs = period.filter(c => c !== hub).slice(0, 14).map(c => [c, .55]).concat(live.map(c => [c, 1.15]));
+        const arcs = period.filter(c => c !== hub).slice(0, 14).map(c => [c, .7]).concat(live.map(c => [c, 1.3]));
         arcs.forEach(([c, w], i) => {
           const A = xyz(c.lat, c.lon), dot = Math.min(1, Math.max(-1, A[0] * H3[0] + A[1] * H3[1] + A[2] * H3[2])), om = Math.acos(dot);
           if (om < .004) return;
-          const so = Math.sin(om), lift = Math.min(.42, .06 + om * .3), ph = (i * .137 + c.lat * .01) % 1, N = 64;
-          let prev = null;
+          const so = Math.sin(om), lift = Math.min(.42, .06 + om * .3), ph = (i * .137 + c.lat * .01) % 1, N = Math.max(60, Math.round(om * 1600));
           for (let s = 0; s <= N; s++) {
             const u = s / N, k1 = Math.sin((1 - u) * om) / so, k2 = Math.sin(u * om) / so, h = 1 + lift * Math.sin(PI * u);
             const p = [(A[0] * k1 + H3[0] * k2) * h, (A[1] * k1 + H3[1] * k2) * h, (A[2] * k1 + H3[2] * k2) * h, u, ph, w];
-            if (prev) a.push(...prev, ...p);
-            prev = p;
+            a.push(...p);
           }
         });
       }
@@ -172,7 +184,8 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
         gl.bindBuffer(gl.ARRAY_BUFFER, bArc);
         gl.enableVertexAttribArray(ARC.loc.a_p); gl.vertexAttribPointer(ARC.loc.a_p, 3, gl.FLOAT, false, 24, 0);
         gl.enableVertexAttribArray(ARC.loc.a_q); gl.vertexAttribPointer(ARC.loc.a_q, 3, gl.FLOAT, false, 24, 12);
-        gl.drawArrays(gl.LINES, 0, nArc);
+        gl.uniform1f(ARC.loc.u_px, dpr * Math.max(.8, Math.min(1.4, R / 2000)));
+        gl.drawArrays(gl.POINTS, 0, nArc);
         gl.disableVertexAttribArray(ARC.loc.a_p); gl.disableVertexAttribArray(ARC.loc.a_q);
       }
       gl.useProgram(PT.p); gl.uniformMatrix3fv(PT.loc.u_m, false, m); gl.uniform2fv(PT.loc.u_sc, sc); gl.uniform1f(PT.loc.u_t, t); gl.uniform1f(PT.loc.u_px, dpr * 1.5);
@@ -184,7 +197,17 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
       gl.drawArrays(gl.POINTS, 0, nPt);
       gl.disableVertexAttribArray(PT.loc.a_p); gl.disableVertexAttribArray(PT.loc.a_c); gl.disableVertexAttribArray(PT.loc.a_s);
       if (tip.dataset.k) placeTip();
+      placeLabels();
       loop();
+    }
+    function placeLabels() {
+      const m = mat(yaw, pitch), taken = [];
+      for (const l of labs) {
+        const p = apply(m, l.v), x = W / 2 + p[0] * R, y = H / 2 - p[1] * R;
+        const ok = p[2] > .08 && x > 30 && x < W - 30 && y > 14 && y < H - 10 && !taken.some(t => Math.abs(t[0] - x) < 90 && Math.abs(t[1] - y) < 22);
+        l.el.style.opacity = ok ? "1" : "0";
+        if (ok) { taken.push([x, y]); const left = x > W - 130; l.el.style.transform = `translate(${Math.round(left ? x - 14 - l.el.offsetWidth : x + 14)}px,${Math.round(y - 9)}px)`; }
+      }
     }
     function loop() { if (!raf && visible && !document.hidden) raf = requestAnimationFrame(frame); }
 
