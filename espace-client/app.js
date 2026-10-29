@@ -321,9 +321,22 @@
   });
   document.addEventListener("click", e => { if (!e.target.closest("#ddCsv")) $("ddCsv").open = false; });
 
+  /* Carte : réduire / afficher (choix mémorisé sur cet appareil) */
+  function setMap(open, save) {
+    const card = $("mapCard"), btn = $("bMap");
+    card.classList.toggle("collapsed", !open);
+    btn.setAttribute("aria-expanded", String(open));
+    btn.querySelector("span").textContent = open ? "Réduire la carte" : "Afficher la carte";
+    $("mapBody").inert = !open;
+    if (state.globe) state.globe.pause(!open);
+    if (save) try { localStorage.setItem("izs-map", open ? "1" : "0"); } catch (e) {}
+  }
+  $("bMap").addEventListener("click", () => setMap($("mapCard").classList.contains("collapsed"), true));
+  try { if (localStorage.getItem("izs-map") === "0") setMap(false); } catch (e) {}
+
   /* Carte des connexions (globe WebGL, globe.js) */
   function mapSync() {
-    if (!state.globe && window.IZGlobe) state.globe = IZGlobe.create($("globe")) || false;
+    if (!state.globe && window.IZGlobe) { state.globe = IZGlobe.create($("globe")) || false; if (state.globe && $("mapCard").classList.contains("collapsed")) state.globe.pause(true); }
     if (state.globe) { state.globe.setPeriod(state.periodGeo || []); state.globe.setLive(state.liveGeo || []); }
     const P = state.periodGeo || [], L = state.liveGeo || [];
     const on = L.reduce((a, c) => a + c.n, 0), tot = P.reduce((a, c) => a + c.n, 0);

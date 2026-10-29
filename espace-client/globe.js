@@ -125,6 +125,7 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
         const isLive = live.some(x => x.lat === c.lat && x.lon === c.lon), inP = period.find(x => x.lat === c.lat && x.lon === c.lon);
         L.push({ v: xyz(c.lat, c.lon), name: String(c.name).split(" · ")[0], n: inP ? inP.n : 0, live: isLive });
       }
+      L.sort((a, b) => b.n - a.n || (b.live ? 1 : 0) - (a.live ? 1 : 0)); /* la zone principale d'abord */
       labBox.textContent = "";
       labs = L.map(l => { const d = document.createElement("span"); d.className = "glab" + (l.live ? " on" : "");
         d.innerHTML = `${esc(l.name)}${l.n ? ` <i>${nf.format(l.n)}</i>` : ""}`; labBox.appendChild(d); return { ...l, el: d }; });
@@ -209,7 +210,8 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
         if (ok) { taken.push([x, y]); const left = x > W - 130; l.el.style.transform = `translate(${Math.round(left ? x - 14 - l.el.offsetWidth : x + 14)}px,${Math.round(y - 9)}px)`; }
       }
     }
-    function loop() { if (!raf && visible && !document.hidden) raf = requestAnimationFrame(frame); }
+    let paused = false;
+    function loop() { if (!raf && visible && !paused && !document.hidden && W > 20 && H > 20) raf = requestAnimationFrame(frame); }
 
     /* Survol : ville la plus proche du pointeur */
     let hover = null;
@@ -227,7 +229,10 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
       if (!hover) return;
       const p = project(hover.v);
       if (p.z < .08) { hideTip(); return; }
-      tip.style.transform = `translate(${Math.round(Math.min(W - 10, Math.max(10, p.x)))}px,${Math.round(p.y)}px)`;
+      /* L'info-bulle reste entière dans le cadre, quelle que soit la taille d'écran */
+      const hw = tip.offsetWidth / 2, below = p.y - tip.offsetHeight - 18 < 0;
+      tip.classList.toggle("below", below);
+      tip.style.transform = `translate(${Math.round(Math.min(W - hw - 6, Math.max(hw + 6, p.x)))}px,${Math.round(p.y)}px)`;
     }
     function showTip(mk) {
       hover = mk;
@@ -238,7 +243,23 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
     }
     function hideTip() { hover = null; tip.hidden = true; delete tip.dataset.k; }
 
+    /* Zoom tactile à deux doigts, pincement du pavé tactile (Ctrl + molette) et double-clic */
+    const ptr = new Map(); let pinch = null;
+    const dist = () => { const [a, b] = [...ptr.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+    const setZoom = z => { zoomT = Math.max(.8, Math.min(40, z)); userZoom = true; idleAt = performance.now(); loop(); };
+    cv.addEventListener("pointerdown", e => { ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptr.size === 2) { pinch = { d0: dist(), z0: zoomT }; drag = null; hideTip(); } }, true);
+    cv.addEventListener("pointermove", e => {
+      if (!ptr.has(e.pointerId)) return;
+      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && ptr.size === 2) { setZoom(pinch.z0 * dist() / pinch.d0); zoom = zoomT; e.stopImmediatePropagation(); }
+    }, true);
+    const pend = e => { ptr.delete(e.pointerId); if (ptr.size < 2) pinch = null; };
+    cv.addEventListener("pointerup", pend, true); cv.addEventListener("pointercancel", pend, true);
+    cv.addEventListener("wheel", e => { if (!e.ctrlKey) return; e.preventDefault(); setZoom(zoomT * Math.exp(-e.deltaY * .01)); }, { passive: false });
+    cv.addEventListener("dblclick", () => setZoom(zoomT * 1.6));
+
     cv.addEventListener("pointerdown", e => {
+      if (pinch) return;
       drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, id: e.pointerId, t: performance.now() };
       target = null; vy = vp = 0; idleAt = performance.now();
       if (e.pointerType !== "touch") cv.setPointerCapture(e.pointerId);
@@ -276,13 +297,15 @@ void main(){vec2 q=v_p/u_sc;float r=length(q);vec4 c;
     let userZoom = false;
     function focus() { target = { yaw: -FR.lon * RAD, pitch: FR.lat * RAD }; zoomT = fit(); userZoom = false; }
 
-    new ResizeObserver(() => { size(); if (!userZoom && W && H) zoom = zoomT = fit(); loop(); }).observe(cv);
+    new ResizeObserver(() => { size(); if (W < 20 || H < 20) return; if (!userZoom) zoom = zoomT = fit(); loop(); }).observe(cv);
     new IntersectionObserver(es => { visible = es[0].isIntersecting; loop(); }).observe(root);
     document.addEventListener("visibilitychange", loop);
     size(); build();
 
     let sigP = "", sigL = "";
     return {
+      /* Carte réduite : plus aucun calcul tant qu'elle n'est pas rouverte */
+      pause(v) { paused = !!v; if (!paused) { size(); if (!userZoom && W > 20 && H > 20) zoom = zoomT = fit(); loop(); } },
       setPeriod(geo) {
         const s = JSON.stringify(geo || []); if (s === sigP) return; sigP = s;
         period = (geo || []).slice().sort((a, b) => b.n - a.n);

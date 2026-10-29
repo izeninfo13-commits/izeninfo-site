@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#05040A">
 <title>Espace client · IZENINFO</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
-<link rel="stylesheet" href="app.css?v=13">
+<link rel="stylesheet" href="app.css?v=14">
 <script defer src="/sphere.js"></script>
 <style>.logo{gap:.7em!important}.logo .izm{width:1.95em;height:1.95em;flex:none;overflow:visible;transform-origin:50% 50%;animation:iztilt 9s ease-in-out infinite alternate}.logo .wm{height:.7em;width:auto;display:block}@keyframes iztilt{from{transform:perspective(320px) rotateY(-18deg)}to{transform:perspective(320px) rotateY(18deg)}}@media (prefers-reduced-motion:reduce){.logo .izm{animation:none}.shine{display:none}}@media (max-width:440px){.logo .wm{height:.5em!important}.logo .izm{width:1.7em;height:1.7em}}</style>
 </head>
@@ -110,16 +110,21 @@
       <div class="table-scroll" id="tableWrap" hidden></div>
     </section>
 
-    <section data-shape="0" data-side="center" data-dim=".25" class="card mt map-card" aria-labelledby="hMap">
-      <div class="card-head">
-        <div><h2 id="hMap">Carte des connexions</h2><p class="sub" id="mapSub">Visiteurs en France : ville approximative de chaque visite, en direct et sur la période</p></div>
-        <div class="legend map-legend" aria-hidden="true"><span><i class="lg-halo"></i>Visites sur la période</span><span><i class="lg-live"></i>En ligne maintenant</span><span><i class="lg-arc"></i>Vers votre zone principale</span></div>
+    <section data-shape="0" data-side="center" data-dim=".25" class="card mt map-card" id="mapCard" aria-labelledby="hMap">
+      <div class="map-head">
+        <div class="map-title"><h2 id="hMap">Carte des connexions</h2><p class="sub" id="mapSub">Visiteurs en France : ville approximative de chaque visite, en direct et sur la période</p></div>
+        <button type="button" class="btn sm map-toggle" id="bMap" aria-expanded="true" aria-controls="mapBody"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Réduire la carte</span></button>
       </div>
-      <div class="globe" id="globe">
-        <canvas aria-label="Globe interactif des connexions : faites-le tourner pour explorer" role="img"></canvas>
-        <div class="gtip" hidden></div>
-        <div class="gctl"><button type="button" data-gz="in" aria-label="Zoomer">+</button><button type="button" data-gz="out" aria-label="Dézoomer">−</button><button type="button" data-gz="home" aria-label="Recentrer sur la France">◎</button></div>
-        <p class="gnogl">La carte nécessite WebGL, indisponible sur ce navigateur.</p>
+      <div class="map-body" id="mapBody">
+        <div class="map-inner">
+          <div class="legend map-legend" aria-hidden="true"><span><i class="lg-halo"></i>Visites sur la période</span><span><i class="lg-live"></i>En ligne maintenant</span><span><i class="lg-arc"></i>Vers votre zone principale</span></div>
+          <div class="globe" id="globe">
+            <canvas aria-label="Globe interactif des connexions : faites-le glisser pour le tourner, pincez ou utilisez + et − pour zoomer" role="img"></canvas>
+            <div class="gtip" hidden></div>
+            <div class="gctl"><button type="button" data-gz="in" aria-label="Zoomer" title="Zoomer">+</button><button type="button" data-gz="out" aria-label="Dézoomer" title="Dézoomer">−</button><button type="button" data-gz="home" aria-label="Recentrer sur la France" title="Recentrer sur la France">◎</button></div>
+            <p class="gnogl">La carte nécessite WebGL, indisponible sur ce navigateur.</p>
+          </div>
+        </div>
       </div>
       <div class="gstats" id="gStats"></div>
     </section>
@@ -281,8 +286,8 @@
   </form>
 </dialog>
 
-<script defer src="globe.js?v=8"></script>
+<script defer src="globe.js?v=9"></script>
 <script defer src="insights.js?v=2"></script>
-<script src="app.js?v=8" defer></script>
+<script src="app.js?v=9" defer></script>
 </body>
 </html>

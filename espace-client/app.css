@@ -428,3 +428,41 @@ table.data td.txt{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-s
 .herr code{color:var(--ink);font:500 13px var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .herr .st{font:700 12px var(--mono);color:#FFB4A8}
 @media (max-width:620px){.tools{width:100%}.tools .btn,.dd summary{flex:1;justify-content:center}.dd{flex:1;display:flex}.dd summary{width:100%}.dd .menu{right:0;left:auto;min-width:min(230px,calc(100vw - 32px))}}
+
+/* ===== Carte : réduction et adaptation à tous les écrans ===== */
+.map-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px 16px}
+.map-title{min-width:0}
+.map-title .sub{margin-bottom:12px}
+.map-toggle{flex:none;gap:7px}
+.map-toggle svg{width:16px;height:16px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.map-card.collapsed .map-toggle svg{transform:rotate(180deg)}
+.map-body{display:grid;grid-template-rows:1fr;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.map-inner{min-height:0;overflow:hidden}
+.map-card.collapsed .map-body{grid-template-rows:0fr;opacity:0}
+.map-card.collapsed .map-title .sub{margin-bottom:0}
+.map-card.collapsed .gstats{margin-top:10px}
+.map-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 10px}
+.globe{height:clamp(380px,42vw,560px);margin:0 -8px}
+.gtip.below{translate:-50% 0;margin:14px 0 0}
+.gstats{display:flex;flex-wrap:wrap;gap:8px 22px}
+@media (min-width:1600px){.globe{height:600px}}
+@media (max-width:1023px){.globe{height:clamp(340px,58vw,480px)}}
+@media (max-width:640px){
+  .map-head{flex-direction:column;align-items:stretch}
+  .map-toggle{justify-content:center;order:2;margin-bottom:12px}
+  .map-card.collapsed .map-toggle{margin-bottom:0}
+  .map-legend{gap:6px 14px;font-size:12.5px}
+  .globe{height:clamp(280px,88vw,400px);margin:0 -6px}
+  .gstats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:12.5px}
+  .gstats span:nth-child(3){grid-column:1/-1;order:4}
+}
+@media (max-width:360px){.globe{height:280px}.map-legend{font-size:12px}}
+@media (max-height:500px) and (orientation:landscape){.globe{height:max(240px,72vh)}}
+@media (pointer:coarse){.gctl button{width:40px;height:40px;font-size:18px}.gctl{gap:8px}}
+@media (pointer:coarse) and (max-width:640px){.gctl{top:8px;right:8px}}
+@media (prefers-reduced-motion:reduce){.map-body,.map-toggle svg{transition:none}}
+.herr ul{grid-template-columns:minmax(0,1fr)}.herr li{min-width:0}
+/* Petits écrans et téléphones à l'horizontale : en-tête compact, non collant, pour laisser la place à la carte */
+@media (max-height:500px) and (orientation:landscape){.top{position:static}}
+@media (max-width:360px){.top .wrap{gap:6px}.top .btn.sm{padding:0 8px;font-size:11.5px;min-height:34px}.top .logo .wm{height:.42em!important}}
+.funnel-wrap>*{min-width:0}.fval{grid-template-columns:minmax(0,1fr)}.lv-row .btn{flex:none}
