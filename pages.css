@@ -262,3 +262,7 @@ table.data td:last-child{color:var(--ink)!important}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 @media (max-width:960px){.veil{background:linear-gradient(180deg,rgba(5,4,10,.15),rgba(5,4,10,.55))}}
 .top .btn{text-transform:none;letter-spacing:.02em;font:600 13px/1 var(--body)}
+
+/* Tarifs : prix sur une ligne */
+.price{flex-wrap:wrap;gap:4px 10px}.price b{white-space:nowrap}
+.tarifs .grid{align-items:stretch}
