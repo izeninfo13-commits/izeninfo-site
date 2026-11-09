@@ -16,6 +16,10 @@ RewriteRule ^marseille/?$ https://izeninfo.fr/creation-site-internet-marseille/ 
 RewriteRule ^(bayonne|legal|mentions-legales)/?$ https://izeninfo.fr/ [L,R=301]
 RewriteRule ^(contact|services|tarifs|realisations)/?$ https://izeninfo.fr/#$1 [L,R=301,NE]
 RewriteRule ^portfolio/?$ https://izeninfo.fr/#realisations [L,R=301,NE]
+# Anciennes URL de langue (?lang=xx) : version propre
+RewriteCond %{QUERY_STRING} (^|&)lang= [NC]
+RewriteCond %{REQUEST_URI} !^/(espace-client|stats)/ [NC]
+RewriteRule ^(.*)$ https://izeninfo.fr/$1? [L,R=301]
 # Page d'accueil en double
 RewriteCond %{THE_REQUEST} \s/index\.html[\s?] [NC]
 RewriteRule ^index\.html$ https://izeninfo.fr/ [L,R=301]

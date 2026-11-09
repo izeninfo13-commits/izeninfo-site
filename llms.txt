@@ -4,7 +4,7 @@
 
 - Contact : direction@izenride.com · 07 66 44 30 53 · du lundi au vendredi, 9 h – 19 h
 - Adresse : 4 rue Massilie, 13420 Gémenos, France
-- Zone : Marseille, Aubagne, Gémenos, La Ciotat, Aix-en-Provence, Toulon et toute la France
+- Zone : Marseille, Aubagne, Gémenos, La Ciotat, Cassis, Aix-en-Provence, Toulon et toute la France
 
 ## Collaboration
 
@@ -30,8 +30,19 @@
 - [Boutique en ligne](https://izeninfo.fr/boutique-en-ligne/)
 - [Référencement local](https://izeninfo.fr/referencement-local/)
 - [Création de site internet à Aubagne et Gémenos](https://izeninfo.fr/creation-site-internet-aubagne/)
+- [Création de site internet à Aix-en-Provence](https://izeninfo.fr/creation-site-internet-aix-en-provence/)
+- [Création de site internet à Toulon et dans le Var](https://izeninfo.fr/creation-site-internet-toulon/)
+- [Création de site internet à La Ciotat](https://izeninfo.fr/creation-site-internet-la-ciotat/)
+- [Création de site internet à Cassis](https://izeninfo.fr/creation-site-internet-cassis/)
 - [Refonte de site internet](https://izeninfo.fr/refonte-site-internet/) : passer de Wix, WordPress ou Shopify au sur-mesure sans perdre son référencement
 - [Prix d'un site internet en 2026](https://izeninfo.fr/prix-site-internet/) : guide des budgets, des frais annuels et de nos tarifs
+
+## Conseils
+
+- [Fiche Google Business Profile : le guide](https://izeninfo.fr/conseils/fiche-google-business-profile/)
+- [Wix, WordPress ou site sur mesure : lequel choisir ?](https://izeninfo.fr/conseils/wix-wordpress-ou-sur-mesure/)
+- [Vitesse du site et Core Web Vitals](https://izeninfo.fr/conseils/vitesse-site-core-web-vitals/)
+- [Site vitrine : 9 éléments qui génèrent des contacts](https://izeninfo.fr/conseils/site-vitrine-qui-convertit/)
 
 ## Études de cas
 
